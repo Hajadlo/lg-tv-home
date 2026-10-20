@@ -4,6 +4,8 @@ A custom home screen for LG webOS TVs. It replaces LG's launcher with a calm,
 remote-friendly page that shows what you actually watch and play, and opens
 the right app in one press.
 
+![TV Home on the Jellyfin tab](docs/screenshots/jellyfin.jpg)
+
 ## What it does
 
 - **Apps as tabs.** Across the top sit the "doors": Jellyfin, YouTube and
@@ -25,6 +27,17 @@ the right app in one press.
   games are listed with their art.
 - Also: clock, weather, shortcuts to Picture, Sound, Inputs and all settings,
   a slow slideshow when idle, and a small offline screen if the server is down.
+
+## Screenshots
+
+Taken from a real setup at 1920×1080, the TV's resolution.
+
+| | |
+|---|---|
+| ![YouTube tab](docs/screenshots/youtube.jpg) | ![YouTube rows: Latest and Continue watching](docs/screenshots/youtube-rows.jpg) |
+| **YouTube:** the newest video from your subscriptions | **Latest** uploads and **Continue watching**, with progress bars |
+| ![Steam tab](docs/screenshots/steam.jpg) | ![Jellyfin rows: Next up and Recently added](docs/screenshots/jellyfin-rows.jpg) |
+| **Steam:** recently played games; Enter wakes the PC and opens Moonlight | **Jellyfin:** Next up and Recently added |
 
 ## What you need
 
