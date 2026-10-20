@@ -5,6 +5,13 @@ always-on Linux machine on the same network. You run on that machine, in a
 clone of this repo. Read `README.md` first, then work through the steps in
 order. Each step ends with a check; do not move on until it passes.
 
+**First, check which version fits.** This runbook is for the server version
+and needs an always-on machine on the TV's network. If the person has none,
+or you are running on a laptop that sleeps, stop here and help them with the
+TV-only version instead: follow [lite/README.md](lite/README.md) (install the
+`.ipk` from the latest release in Developer Mode, then Set up on the TV). Ask
+them if unsure.
+
 ## Ground rules
 
 - **Secrets.** Never print, log, paste or commit the SSAP key, the Dev Mode

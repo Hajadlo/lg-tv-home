@@ -6,6 +6,20 @@ the right app in one press.
 
 ![TV Home on the Jellyfin tab](docs/screenshots/jellyfin.jpg)
 
+## Start here: pick a version
+
+- **No computer that stays on? Use the TV-only version.** One app, no server:
+  download the `.ipk` from the
+  [latest release](https://github.com/Hajadlo/lg-tv-home/releases/tag/lite-v0.1.0),
+  install it in Developer Mode and set it up on the TV with the remote.
+  Steps: [lite/README.md](lite/README.md).
+- **Have an always-on machine (home server, NAS, Raspberry Pi)? Use the server
+  version** for the full experience: Home button takeover, watched videos
+  hidden, Continue watching, automatic Developer Mode renewal. Hand
+  [SETUP.md](SETUP.md) to a coding agent running on that machine.
+
+Not sure? See [Three ways to run it](#three-ways-to-run-it) below.
+
 ## What it does
 
 - **Apps as tabs.** Across the top sit the "doors": Jellyfin, YouTube and
