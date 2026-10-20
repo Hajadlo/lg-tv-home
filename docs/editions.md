@@ -17,7 +17,7 @@ TV yet.
 | YouTube: new uploads from subscriptions | Yes, from a channel list typed in on the TV | Yes, follows your subscriptions automatically | Same as TV only, or as server if one is added |
 | YouTube: hide watched, Continue watching | No | Yes | No without a server |
 | Jellyfin rows | Yes | Yes | Yes |
-| Jellyfin: play an episode directly | Yes, through Jellyfin's remote control *(unverified)* | Yes | Yes *(unverified)* |
+| Jellyfin: play an episode directly | Yes, through Jellyfin's remote control | Yes | Yes *(unverified)* |
 | Steam: recently played | Yes, through the Steam Web API (free key, public game details) *(unverified)* | Yes, read from the PC | Yes |
 | Steam: wake the PC and open Big Picture | Wake-on-LAN from the TV *(unverified)* | Yes, and restarts Sunshine if needed | Yes *(unverified)* |
 | Developer Mode renewal | Automatic each time TV Home opens (open it at least monthly) | Automatic | Not needed (root replaces Developer Mode) |

@@ -64,13 +64,13 @@ browser run.
 | | |
 |---|---|
 | Install as its own app (`com.tvhome.lite`, "TV Home"), service inside it | Yes |
-| Home page: clock, weather, tabs, rows, TV settings shortcuts | Yes in a desktop browser *(not yet checked on a TV screen)* |
-| Set up on the TV, first-run prompt | Opens on first start (checked); typing with the TV keyboard *(not yet checked)* |
+| Home page: clock, weather, tabs, rows, TV settings shortcuts | Yes |
+| Set up on the TV, first-run prompt | Yes: opens on first start and from the top bar; the TV's keyboard types into the boxes; red button saves |
 | Weather: town search, or a guess from the connection | Yes (Open-Meteo; guess via geojs.io, then ipwho.is) |
 | YouTube: new videos from a channel list, Shorts left out | Yes (public channel feeds; @names resolved from the channel page) |
 | YouTube: follow your subscriptions, hide watched videos, Continue watching | No (needs your YouTube login; the server version does it) |
 | Jellyfin: sign in, Continue watching, Next up, Recently added | Yes (sign-in checked on the TV) |
-| Jellyfin: start the picked episode | Through Jellyfin's remote control, run by the app's service *(not yet checked on a TV)* |
+| Jellyfin: start the picked episode | Yes, through Jellyfin's remote control, run by the app's service (the Jellyfin app opens and plays it) |
 | Steam: recently played games | Through the Steam Web API *(checked with recorded answers only)* |
 | Steam: wake the PC, open Moonlight (optionally straight into Big Picture) | Wake-on-LAN from the TV *(not yet checked on a TV)*; no Sunshine restart |
 | Tabs only for apps on the TV | No: webOS refuses an app the app list, so every app with an id gets a tab; clear an id in Set up to hide its tab |
