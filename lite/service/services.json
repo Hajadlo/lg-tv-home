@@ -1,0 +1,10 @@
+{
+  "id": "com.tvhome.lite.service",
+  "description": "TV Home lite helper service",
+  "services": [
+    {
+      "name": "com.tvhome.lite.service",
+      "description": "Network helper, Wake-on-LAN, Dev Mode renewal"
+    }
+  ]
+}

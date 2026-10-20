@@ -1,0 +1,7 @@
+{
+  "name": "com.tvhome.lite.service",
+  "version": "0.1.0",
+  "description": "TV Home lite helper service",
+  "main": "service.js",
+  "private": true
+}

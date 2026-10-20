@@ -1,0 +1,18 @@
+{
+  "id": "com.tvhome.lite",
+  "version": "0.1.0",
+  "vendor": "TV Home",
+  "type": "web",
+  "main": "index.html",
+  "title": "TV Home",
+  "icon": "icon.png",
+  "largeIcon": "largeIcon.png",
+  "iconColor": "#14171c",
+  "bgColor": "#0b0d10",
+  "resolution": "1920x1080",
+  "disableBackHistoryAPI": true,
+  "handlesRelaunch": true,
+  "vendorExtension": {
+    "allowCrossDomain": true
+  }
+}

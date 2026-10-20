@@ -1,0 +1,17 @@
+/* TV Home lite: fallbacks for older TVs (webOS 4-6, Chromium 53-79).
+   lite/build.py already rewrote ui/css/home.css for them (inset, rgb() with
+   a slash); this adds what a rewrite cannot: CSS grid (Chromium 57+) and
+   flexbox gap (Chromium 84+). lite/js/compat.js sets html.no-flexgap. */
+
+/* No CSS grid (webOS 4): wrap the tiles with flexbox and margins. */
+@supports not (display: grid) {
+  .grid { display: -webkit-flex; display: flex; -webkit-flex-wrap: wrap; flex-wrap: wrap; width: 1760px; }
+  .grid > .tile { width: 323px; margin: 0 28px 30px 0; }
+  .row.portrait .grid > .tile { width: 195px; margin: 0 24px 26px 0; }
+}
+
+/* No flexbox gap: margins between the items instead. */
+.no-flexgap #settings > * + * { margin-left: 40px; }
+.no-flexgap #settings > .setting-lg, .no-flexgap #settings > .setting-setup { margin-left: 68px; }
+.no-flexgap #doors > .door + .door { margin-left: 64px; }
+.no-flexgap .tile-sub > * + * { margin-left: 16px; }

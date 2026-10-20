@@ -160,6 +160,8 @@
       var frac = sys.hddFreeGb / sys.hddTotalGb;
       if (frac < 0.1 || sys.hddFreeGb < 100) status = "Disk almost full, " + Math.round(sys.hddFreeGb) + " GB free";
     }
+    // A short note from the data layer (the TV-only edition: Developer Mode running out).
+    if (!status && d && d.notice) status = d.notice;
     setIfChanged($("status"), status);
   }
 
@@ -187,6 +189,7 @@
       if (i >= urls.length) return cb(null);
       var url = urls[i++], img = new Image();
       img.onload = function () {
+        if (img.naturalWidth && img.naturalWidth <= 120) return attempt();   // YouTube's "no picture" stand-in
         if (img.decode) img.decode().then(function () { cb(url); }, function () { cb(url); });
         else cb(url);
       };
@@ -291,6 +294,13 @@
     ]));
   }
   var DOWN_HEAD = "The home server isn't answering";
+  /* A room's data may carry its own empty state instead of items:
+     {notice: {head, text, door}} (the TV-only edition: not set up, not answering). */
+  function roomNotice(el, x) {
+    if (!x || !x.notice) return false;
+    heroEmpty(el, x.notice.head, x.notice.text);
+    return true;
+  }
 
   /* ---------- Jellyfin room ---------- */
   function pickHero(jf) {
@@ -320,6 +330,7 @@
       return { backdrops: [] };
     }
     var jf = d && d.jellyfin;
+    if (roomNotice(hero, jf)) return { backdrops: [] };
     if (!jf) {
       heroEmpty(hero, "Jellyfin isn't answering", "The home server can't reach it right now. It may still open on its own.");
       return { backdrops: [] };
@@ -373,6 +384,7 @@
       return { backdrops: [] };
     }
     var yt = d && d.youtube;
+    if (roomNotice(hero, yt)) return { backdrops: [] };
     var vids = yt ? (yt.videos || []).filter(function (v) { return v && v.id; }).slice(0, MAX_VIDEOS) : [];
     if (!vids.length) {
       // null, or an account that was never connected, or a connected one with nothing to show
@@ -417,6 +429,7 @@
       return { backdrops: [] };
     }
     var st = d && d.steam;
+    if (roomNotice(hero, st)) return { backdrops: [] };
     var games = st ? (st.recent || []).filter(function (g) { return g && g.appid; }).slice(0, MAX_TILES) : [];
     if (!games.length) {
       heroEmpty(hero, "No games seen yet",
@@ -563,9 +576,11 @@
   var jfNote = $("jf-note"), ytNoteEl = $("yt-note");   // kept: a removed door's note is detached, not gone
   function renderDoors(d) {
     var before = jfNote.textContent + "|" + ytNoteEl.textContent + "|" + pcNote.textContent;
-    setIfChanged(jfNote, (!down && d && d.jellyfin === null) ? "Not reachable right now" : "");
+    var jfn = d && d.jellyfin && d.jellyfin.notice;
+    setIfChanged(jfNote, jfn ? jfn.door || "" : (!down && d && d.jellyfin === null) ? "Not reachable right now" : "");
     var yt = d && d.youtube, ytNote = "";
-    if (!down && d) {
+    if (yt && yt.notice) ytNote = yt.notice.door || "";
+    else if (!down && d) {
       var vids = (yt && yt.videos) || [];
       if (!vids.length) ytNote = yt && yt.auth === "ok" ? "" : "No account connected";
       else if (yt.auth === "expired") ytNote = "Sign-in expired";
@@ -714,6 +729,8 @@
     if (el.dataset.app === "pc") return playOnPc();
     if (el.dataset.settings) return openSettings(el.dataset.settings);
     if (el.hasAttribute("data-lg")) return lgHome();
+    // Extra items an edition adds to the page (the TV-only edition's "Set up").
+    if (el.dataset.action && TVH.actions && TVH.actions[el.dataset.action]) return TVH.actions[el.dataset.action](el);
     var launch = el.dataset.launch || "";
     if (launch.indexOf("jf:") === 0) {
       // The Jellyfin app ignores deep links; the server plays the item through
@@ -757,7 +774,8 @@
   function fillBar(to, ms, easing) {
     var from = 0;
     if (pcFill) {
-      var t = pcFill.effect.getComputedTiming();
+      // Animation.effect is missing on older engines (Chromium < 75): jump to the end.
+      var t = pcFill.effect && pcFill.effect.getComputedTiming ? pcFill.effect.getComputedTiming() : { progress: 1 };
       from = pcFill.fromTo[0] + (pcFill.fromTo[1] - pcFill.fromTo[0]) * (t.progress === null ? 1 : t.progress);
       pcFill.cancel();
     }
@@ -796,7 +814,7 @@
       if (r.ready || (r.state === "on" && r.sunshine === "listening")) return pcReady();
       pc.deadline = Date.now() + PC_TIMEOUT;
       pc.timer = setTimeout(pollPc, 1500);
-    }).catch(function () { pcFail("The home server isn't answering"); });
+    }).catch(function (e) { pcFail((e && e.userMessage) || "The home server isn't answering"); });
   }
   function pollPc() {
     api.pc().then(function (r) {
@@ -945,5 +963,9 @@
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { doorsDirty = true; flush(); });
   load();
   setInterval(function () { if (!idle.active && !pc.busy) load(); }, REFRESH_MS);
+  // A data layer that finished late asks for another look (the TV-only edition).
+  window.addEventListener("tvhome-refresh", function () { if (ready && !idle.active) load(); });
+  // Back from another app (Jellyfin, YouTube): fresh rows, rebuilt only where they changed.
+  document.addEventListener("visibilitychange", function () { if (!document.hidden && ready) load(); });
   if (params.get("idle") === "1") setTimeout(idleEnter, 1500);
 })();

@@ -41,20 +41,20 @@ Taken from a real setup at 1920×1080, the TV's resolution.
 
 ## Three ways to run it
 
-What TV Home can do depends on what runs it. **Only the server version is
-built today**; the other two are written-up designs. Details, caveats and
-what is still unverified: [docs/editions.md](docs/editions.md).
+What TV Home can do depends on what runs it. The server version and the
+TV-only version are built; the rooted one is a written-up design. Details,
+caveats and what is still unverified: [docs/editions.md](docs/editions.md).
 
 | | TV only (Developer Mode) | TV + server (this repo) | Rooted TV |
 |---|---|---|---|
-| Status | Design | **Built** | Design |
+| Status | **Built**: [lite/](lite/README.md), [download](https://github.com/Hajadlo/lg-tv-home/releases/tag/lite-v0.1.0) | **Built** | Design |
 | Extra hardware | None | Always-on machine on the LAN | None |
 | Home page, Jellyfin rows, YouTube uploads, Steam recents | Yes | Yes | Yes |
 | Home button and power-on open TV Home | No (open it like an app) | Yes | Yes |
 | YouTube follows your subscriptions automatically | No (fixed channel list) | Yes | No, unless a server is added |
 | YouTube hides watched videos, Continue watching | No | Yes | No, unless a server is added |
-| Steam: wake PC, fix Sunshine, open Big Picture | Wake only | Yes | Wake only |
-| Developer Mode renewal | By hand, about monthly | Automatic | Not needed |
+| Steam: wake PC, fix Sunshine, open Big Picture | Wake and open, no Sunshine fix | Yes | Wake only |
+| Developer Mode renewal | Automatic when TV Home opens | Automatic | Not needed |
 
 ## What you need (TV + server)
 
@@ -86,6 +86,7 @@ keys.
 | `server/` | The TV Home server (Python, no dependencies; Pillow optional) |
 | `ui/` | The home page (static HTML/CSS/JS, served by the server) |
 | `tv/` | The webOS app, installer, auto-launch watcher, Dev Mode renewal |
+| `lite/` | The TV-only edition: one app, no server ([lite/README.md](lite/README.md)) |
 | `systemd/` | User service templates and `install-units` |
 | `config.example.toml` | Every setting, commented |
 | `tests/`, `check.sh` | Tests; run `./check.sh` |

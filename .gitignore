@@ -3,3 +3,5 @@ __pycache__/
 # Never commit a filled-in config or any secret.
 config.toml
 *.ipk
+lite/build/
+lite/dist/

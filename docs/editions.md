@@ -1,48 +1,55 @@
 # Three ways to run TV Home
 
 TV Home can be built three ways, depending on what you have: a TV alone, a TV
-plus an always-on machine, or a rooted TV. **Only the server version exists
-today**; the other two are designs, written down so it is clear what each
-could and could not do. Items marked *(unverified)* are expected to work but
-have not been tried on a TV yet.
+plus an always-on machine, or a rooted TV. The server version and the TV-only
+version exist (the TV-only one in [`lite/`](../lite/README.md)); the rooted
+one is a design, written down so it is clear what it could and could not do.
+Items marked *(unverified)* are expected to work but have not been tried on a
+TV yet.
 
 | | TV only (Developer Mode) | TV + server (this repo) | Rooted TV |
 |---|---|---|---|
-| **Status** | Design, not built | **Built, in daily use** | Design, not built |
+| **Status** | **Built** ([`lite/`](../lite/README.md)), new | **Built, in daily use** | Design, not built |
 | Needs | LG TV in Developer Mode | LG TV in Developer Mode + an always-on machine on the LAN | LG TV whose firmware can be rooted |
 | Home page, tabs, clock, weather, settings shortcuts | Yes | Yes | Yes |
 | Shows on power-on | Only if the TV reopens the last app *(unverified, depends on model)* | Yes | Yes |
 | Home button opens TV Home | No | Yes | Yes *(unverified)* |
-| YouTube: new uploads from subscriptions | Yes, from a channel list or a Google sign-in that expires weekly | Yes, follows your subscriptions automatically | Same as TV only, or as server if one is added |
+| YouTube: new uploads from subscriptions | Yes, from a channel list typed in on the TV | Yes, follows your subscriptions automatically | Same as TV only, or as server if one is added |
 | YouTube: hide watched, Continue watching | No | Yes | No without a server |
 | Jellyfin rows | Yes | Yes | Yes |
-| Jellyfin: play an episode directly | Yes *(unverified)* | Yes | Yes *(unverified)* |
-| Steam: recently played | Yes, through the Steam Web API (public profile) *(unverified)* | Yes, read from the PC | Yes |
+| Jellyfin: play an episode directly | Yes, through Jellyfin's remote control *(unverified)* | Yes | Yes *(unverified)* |
+| Steam: recently played | Yes, through the Steam Web API (free key, public game details) *(unverified)* | Yes, read from the PC | Yes |
 | Steam: wake the PC and open Big Picture | Wake-on-LAN from the TV *(unverified)* | Yes, and restarts Sunshine if needed | Yes *(unverified)* |
-| Developer Mode renewal | **By hand** every ~41 days, or LG deletes the app | Automatic | Not needed (root replaces Developer Mode) |
-| Effort | Medium: package the page into the app, move the fetching into a small on-TV service | Done | High: port to the TV, set up start-at-boot; rooting risks voiding the warranty |
+| Developer Mode renewal | Automatic each time TV Home opens (open it at least monthly) | Automatic | Not needed (root replaces Developer Mode) |
+| Effort | Done: install one app, set it up with the remote | Done | High: port to the TV, set up start-at-boot; rooting risks voiding the warranty |
 
 ## TV only (Developer Mode, no server)
 
-Everything lives in the TV app: the page itself is packaged into the app, and
-a small background service inside the same app (webOS "JS service", Node.js)
-fetches the data the page shows. Nothing else has to be running.
+Everything lives in the TV app ([`lite/`](../lite/README.md), app id
+`com.tvhome.lite`): the same page as the server version is packaged into the
+app, its data layer runs in the page, and a small service inside the same app
+(webOS "JS service", Node.js) makes the requests a web page cannot (no CORS,
+cookies, Wake-on-LAN, Dev Mode renewal). Nothing else has to be running.
+Settings are entered on the TV with the remote (Set up).
 
 What it can do:
 
 - The full home page: tabs, rows, clock, weather (Open-Meteo, no key),
   settings shortcuts, and launching Jellyfin, YouTube AdFree and Moonlight.
-- **YouTube:** new uploads from each subscribed channel's public feed. The
-  list of channels comes from a file you upload once (or a Google Takeout
-  export), or from signing in to Google on the TV with a code. Google expires
-  that sign-in every 7 days for personal projects, so a fixed list is the
-  practical choice.
+- **YouTube:** new uploads from each channel's public feed, Shorts left out.
+  The channels are typed in as their @names in Set up. (Signing in to Google
+  on the TV with a code was considered: Google expires that sign-in every 7
+  days for personal projects, so a fixed list is the practical choice.)
 - **Jellyfin:** Continue watching, Next up and Recently added straight from
   the Jellyfin server, and starting an episode directly through Jellyfin's
   remote control.
 - **Steam:** recently played games through the Steam Web API (needs a free API
-  key and a public game list), and Wake-on-LAN to the PC before Moonlight
-  opens.
+  key and public game details), and Wake-on-LAN to the PC before Moonlight
+  opens; with the PC's address it waits until the PC answers.
+- **Developer Mode:** checked on webOS 25: the app's service can read the TV's
+  Dev Mode session token and call LG's `ResetDevModeSession`, so each time TV
+  Home opens it extends the session to the full 1000 hours. Set up shows the
+  days left; the home page warns when fewer than 7 remain.
 
 What it cannot do:
 
@@ -54,10 +61,14 @@ What it cannot do:
 - **Hide watched videos or show Continue watching.** That needs your YouTube
   login, which the server copies from a desktop browser; there is no
   reasonable way to do that on the TV.
-- **Renew Developer Mode.** It lasts at most 1000 hours (about 41 days). Open
-  LG's Developer Mode app and press "Extend" before then, or LG removes all
-  Developer Mode apps (TV Home, YouTube AdFree, Moonlight). The app can show a
-  reminder when the deadline is near.
+- **Renew Developer Mode without being opened.** The renewal runs when TV Home
+  opens; a TV where it is not opened for 41 days loses its Developer Mode apps
+  (TV Home, YouTube AdFree, Moonlight) at the next restart.
+- **Know which apps are installed.** webOS refuses a Developer Mode app the app
+  list (`listApps`, `getAppInfo`: "Denied method call", webOS 25), so every
+  app gets a tab unless its id is cleared in Set up.
+- **Restart Sunshine** on the PC when it is up but not streaming (the server
+  does that over SSH).
 
 ## TV + server (this repo)
 
@@ -109,7 +120,7 @@ firmware on webosbrew.org before planning on it.
 - You don't, and your TV can be rooted: **rooted TV** gets close to the full
   experience (everything except watched / Continue watching).
 - You don't, and it can't be rooted: **TV only**, accepting no Home-button
-  takeover and a monthly "Extend" press.
+  takeover and no watched-video filter.
 
 Find the model and firmware under Settings → General → About This TV (or
 Support → TV Information).
