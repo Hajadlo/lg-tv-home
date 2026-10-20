@@ -1,0 +1,108 @@
+# TV Home configuration.
+#
+# Copy to ~/.config/tv-home/config.toml (or point TVHOME_CONFIG at another
+# path) and fill it in. Check what is switched on with:
+#
+#   python3 server/tvconfig.py check
+#
+# Every source section is optional. Leave a section out (or leave its
+# required keys empty) and its tab disappears from the home page.
+#
+# No secrets here. Keys, cookies and tokens live in their own mode-600 files
+# in ~/.config/tv-home/ (ssap-client-key, jellyfin.json, yt-cookies.json,
+# google-oauth-*.json, devmode-token); the scripts create them.
+# Addresses below are documentation examples (192.0.2.x): use your own.
+
+[server]
+# Where the TV Home server listens. 0.0.0.0 = every interface, so the TV can reach it.
+host = "0.0.0.0"
+port = 8797
+# How the TV reaches this server: its LAN address and the port above. Baked
+# into the TV app by tv/install, so reinstall the app after changing it.
+url = "http://192.0.2.10:8797/"
+# Optional: a mount point whose free space is watched. The home page shows
+# "Disk almost full" under 10 % or 100 GB free. Empty = no disk line.
+disk = ""
+
+[tv]
+# The TV's LAN address (give it a fixed lease in your router).
+ip = "192.0.2.20"
+# The device name you gave `ares-setup-device` (see SETUP.md).
+ares_device = "tv"
+# Id and title of the TV Home app on the TV. Any reverse-domain id works;
+# lowercase letters, digits and dots.
+app_id = "com.example.tvhome"
+title = "Home"
+# true: the remote's Home button opens TV Home instead of LG's launcher (the
+# autolaunch watcher relaunches TV Home when LG's launcher comes up; "LG apps"
+# on the home page still reaches LG's launcher).
+takeover = true
+
+[tv.apps]
+# App ids on your TV. Check them with `ares-install --device tv --list` or
+# `ares-launch --device tv --list`; they can differ between builds.
+jellyfin = "org.jellyfin.webos"
+youtube = "youtube.leanback.v4"      # YouTube AdFree (webosbrew youtube-webos)
+moonlight = "com.limelight.webos"    # Moonlight TV (moonlight-tv)
+
+[weather]
+# Open-Meteo forecast for this place (no account needed). Remove the section
+# to hide the weather line.
+latitude = 51.5072
+longitude = -0.1276
+name = "London"
+
+[jellyfin]
+# The Jellyfin server as this machine reaches it (127.0.0.1 when Jellyfin runs here).
+url = "http://127.0.0.1:8096"
+# The Jellyfin user whose Continue watching / Next up / Recently added are shown.
+# On first start TV Home signs in once, creates an API key named "tv-home"
+# and keeps it in ~/.config/tv-home/jellyfin.json. A user with a password:
+# see SETUP.md, "Jellyfin".
+user = "viewer"
+
+[youtube]
+# Subscriptions from public RSS feeds, without ads, with watched videos left
+# out and a Continue watching row. That needs your YouTube login, copied from
+# a Firefox-family browser (Firefox, Zen, LibreWolf, Floorp) where you are
+# signed in to YouTube.
+#
+# The channel to act as: its name or @handle as shown in YouTube's account
+# switcher (a Google account can have several channels).
+channel = "My Channel"
+# The browser profile directory that holds cookies.sqlite, or the browser's
+# root directory (the one with installs.ini; its default profile is used).
+# Firefox: ~/.mozilla/firefox  (Flatpak: ~/.var/app/org.mozilla.firefox/.mozilla/firefox)
+browser_profile = "~/.mozilla/firefox"
+# Set when that browser runs on another machine: an ssh host (from
+# ~/.ssh/config, key login) where browser_profile is read, read-only, about
+# hourly while it is reachable.
+ssh_host = ""
+# Fallback channel list without any login: Google Takeout's
+# "YouTube and YouTube Music/subscriptions/subscriptions.csv". Used only when
+# channel/browser_profile are not set. (A second fallback, Google OAuth, is
+# set up with server/youtube-auth; see SETUP.md.)
+subscriptions_csv = ""
+
+[steam]
+# The Steam tab: wakes the gaming PC, makes sure Sunshine listens, then opens
+# Moonlight on the TV streaming one Sunshine app (e.g. Steam Big Picture).
+pc_ip = "192.0.2.30"
+pc_mac = "00:11:22:33:44:55"          # for Wake-on-LAN
+broadcast = ["192.0.2.255"]           # your LAN's broadcast address(es); 255.255.255.255 is always added
+sunshine_port = 47989
+# Moonlight's id for the PC (Sunshine's uniqueid) and the Sunshine app to
+# start. SETUP.md, "Steam via Moonlight", shows how to read both.
+moonlight_host_uuid = ""
+moonlight_app_id = 0
+# Optional: ssh host of the PC (key login). Used to restart Sunshine when it
+# is not listening, and to read the recently played games.
+ssh_host = ""
+sunshine_unit = ""                    # systemd --user unit that runs Sunshine on the PC, e.g. "sunshine.service"
+steam_root = "~/.local/share/Steam"   # on the PC (Flatpak Steam: ~/.var/app/com.valvesoftware.Steam/.local/share/Steam)
+steam_user_id = 0                     # Steam userdata folder to read; 0 = the account that logged in last
+
+[ntfy]
+# Optional phone alerts (Dev Mode renewal failed, YouTube login stopped
+# working): a full ntfy topic URL, e.g. https://ntfy.sh/<long-random-topic>.
+url = ""

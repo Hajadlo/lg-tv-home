@@ -1,0 +1,96 @@
+{
+ "responseContext": {
+  "mainAppWebResponseContext": {
+   "datasyncId": "200000000000000000002||100000000000000000001",
+   "loggedOut": false
+  }
+ },
+ "contents": {
+  "twoColumnBrowseResultsRenderer": {
+   "tabs": [
+    {
+     "tabRenderer": {
+      "content": {
+       "sectionListRenderer": {
+        "header": {
+         "chipBarViewModel": {
+          "chips": [
+           {
+            "chipViewModel": {
+             "tapCommand": {
+              "innertubeCommand": {
+               "continuationCommand": {
+                "token": "FAKE_CHIP_TOKEN_NOT_A_PAGE"
+               }
+              }
+             }
+            }
+           }
+          ]
+         }
+        },
+        "contents": [
+         {
+          "itemSectionRenderer": {
+           "contents": [
+            {
+             "shelfRenderer": {
+              "content": {
+               "expandedShelfContentsRenderer": {
+                "items": [
+                 {
+                  "channelRenderer": {
+                   "channelId": "UCfixturechannel01xxxxxx",
+                   "title": {
+                    "simpleText": "Channel 1"
+                   },
+                   "subscribeButton": {
+                    "subscribeButtonRenderer": {
+                     "subscribed": true
+                    }
+                   }
+                  }
+                 },
+                 {
+                  "channelRenderer": {
+                   "channelId": "UCfixturechannel02xxxxxx",
+                   "title": {
+                    "simpleText": "Channel 2"
+                   },
+                   "subscribeButton": {
+                    "subscribeButtonRenderer": {
+                     "subscribed": true
+                    }
+                   }
+                  }
+                 },
+                 {
+                  "channelRenderer": {
+                   "channelId": "UCfixturechannel03xxxxxx",
+                   "title": {
+                    "simpleText": "Channel 3"
+                   },
+                   "subscribeButton": {
+                    "subscribeButtonRenderer": {
+                     "subscribed": true
+                    }
+                   }
+                  }
+                 }
+                ]
+               }
+              }
+             }
+            }
+           ]
+          }
+         }
+        ]
+       }
+      }
+     }
+    }
+   ]
+  }
+ }
+}

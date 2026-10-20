@@ -1,0 +1,584 @@
+{
+ "responseContext": {
+  "mainAppWebResponseContext": {
+   "datasyncId": "200000000000000000002||100000000000000000001",
+   "loggedOut": false
+  }
+ },
+ "header": {
+  "feedTabbedHeaderRenderer": {
+   "title": {
+    "runs": [
+     {
+      "text": "Subscriptions"
+     }
+    ]
+   }
+  }
+ },
+ "contents": {
+  "twoColumnBrowseResultsRenderer": {
+   "tabs": [
+    {
+     "tabRenderer": {
+      "selected": true,
+      "content": {
+       "richGridRenderer": {
+        "contents": [
+         {
+          "richItemRenderer": {
+           "content": {
+            "lockupViewModel": {
+             "contentId": "fakeLive001",
+             "contentType": "LOCKUP_CONTENT_TYPE_VIDEO",
+             "contentImage": {
+              "thumbnailViewModel": {
+               "overlays": [
+                {
+                 "thumbnailBottomOverlayViewModel": {
+                  "badges": [
+                   {
+                    "thumbnailBadgeViewModel": {
+                     "text": "LIVE"
+                    }
+                   }
+                  ]
+                 }
+                },
+                {
+                 "thumbnailHoverOverlayToggleActionsViewModel": {
+                  "buttons": []
+                 }
+                }
+               ]
+              }
+             },
+             "metadata": {
+              "lockupMetadataViewModel": {
+               "title": {
+                "content": "Live: building a birdhouse"
+               },
+               "metadata": {
+                "contentMetadataViewModel": {
+                 "metadataRows": [
+                  {
+                   "metadataParts": [
+                    {
+                     "text": {
+                      "content": "Woodshop Weekly"
+                     }
+                    },
+                    {
+                     "text": {
+                      "content": "1.2K views"
+                     }
+                    }
+                   ]
+                  }
+                 ]
+                }
+               }
+              }
+             }
+            }
+           }
+          }
+         },
+         {
+          "richItemRenderer": {
+           "content": {
+            "lockupViewModel": {
+             "contentId": "fakeVid0002",
+             "contentType": "LOCKUP_CONTENT_TYPE_VIDEO",
+             "contentImage": {
+              "thumbnailViewModel": {
+               "overlays": [
+                {
+                 "thumbnailBottomOverlayViewModel": {
+                  "badges": [
+                   {
+                    "thumbnailBadgeViewModel": {
+                     "text": "12:34"
+                    }
+                   }
+                  ]
+                 }
+                },
+                {
+                 "thumbnailHoverOverlayToggleActionsViewModel": {
+                  "buttons": []
+                 }
+                }
+               ]
+              }
+             },
+             "metadata": {
+              "lockupMetadataViewModel": {
+               "title": {
+                "content": "Ten knots you should know"
+               },
+               "metadata": {
+                "contentMetadataViewModel": {
+                 "metadataRows": [
+                  {
+                   "metadataParts": [
+                    {
+                     "text": {
+                      "content": "Rope Corner"
+                     }
+                    },
+                    {
+                     "text": {
+                      "content": "1.2K views"
+                     }
+                    }
+                   ]
+                  }
+                 ]
+                }
+               }
+              }
+             }
+            }
+           }
+          }
+         },
+         {
+          "richItemRenderer": {
+           "content": {
+            "lockupViewModel": {
+             "contentId": "fakeVid0003",
+             "contentType": "LOCKUP_CONTENT_TYPE_VIDEO",
+             "contentImage": {
+              "thumbnailViewModel": {
+               "overlays": [
+                {
+                 "thumbnailBottomOverlayViewModel": {
+                  "badges": [
+                   {
+                    "thumbnailBadgeViewModel": {
+                     "text": "6:15:17"
+                    }
+                   }
+                  ]
+                 }
+                },
+                {
+                 "thumbnailHoverOverlayToggleActionsViewModel": {
+                  "buttons": []
+                 }
+                }
+               ]
+              }
+             },
+             "metadata": {
+              "lockupMetadataViewModel": {
+               "title": {
+                "content": "Sourdough, day three"
+               },
+               "metadata": {
+                "contentMetadataViewModel": {
+                 "metadataRows": [
+                  {
+                   "metadataParts": [
+                    {
+                     "text": {
+                      "content": "Crumb Lab"
+                     }
+                    },
+                    {
+                     "text": {
+                      "content": "1.2K views"
+                     }
+                    }
+                   ]
+                  }
+                 ]
+                }
+               }
+              }
+             }
+            }
+           }
+          }
+         },
+         {
+          "richSectionRenderer": {
+           "content": {
+            "richShelfRenderer": {
+             "title": {
+              "runs": [
+               {
+                "text": "Shorts"
+               }
+              ]
+             },
+             "contents": [
+              {
+               "richItemRenderer": {
+                "content": {
+                 "shortsLockupViewModel": {
+                  "entityId": "shorts-shelf-item-fakeShort01",
+                  "overlayMetadata": {
+                   "primaryText": {
+                    "content": "a Short"
+                   }
+                  }
+                 }
+                }
+               }
+              },
+              {
+               "richItemRenderer": {
+                "content": {
+                 "shortsLockupViewModel": {
+                  "entityId": "shorts-shelf-item-fakeShort02",
+                  "overlayMetadata": {
+                   "primaryText": {
+                    "content": "a Short"
+                   }
+                  }
+                 }
+                }
+               }
+              }
+             ]
+            }
+           }
+          }
+         },
+         {
+          "richItemRenderer": {
+           "content": {
+            "lockupViewModel": {
+             "contentId": "fakeVid0004",
+             "contentType": "LOCKUP_CONTENT_TYPE_VIDEO",
+             "contentImage": {
+              "thumbnailViewModel": {
+               "overlays": [
+                {
+                 "thumbnailBottomOverlayViewModel": {
+                  "badges": [
+                   {
+                    "thumbnailBadgeViewModel": {
+                     "text": "7:11"
+                    }
+                   }
+                  ]
+                 }
+                },
+                {
+                 "thumbnailHoverOverlayToggleActionsViewModel": {
+                  "buttons": []
+                 }
+                }
+               ]
+              }
+             },
+             "metadata": {
+              "lockupMetadataViewModel": {
+               "title": {
+                "content": "Fixing a squeaky door"
+               },
+               "metadata": {
+                "contentMetadataViewModel": {
+                 "metadataRows": [
+                  {
+                   "metadataParts": [
+                    {
+                     "text": {
+                      "content": "Woodshop Weekly"
+                     }
+                    },
+                    {
+                     "text": {
+                      "content": "1.2K views"
+                     }
+                    }
+                   ]
+                  }
+                 ]
+                }
+               }
+              }
+             }
+            }
+           }
+          }
+         },
+         {
+          "richItemRenderer": {
+           "content": {
+            "lockupViewModel": {
+             "contentId": "fakeVidPart",
+             "contentType": "LOCKUP_CONTENT_TYPE_VIDEO",
+             "contentImage": {
+              "thumbnailViewModel": {
+               "overlays": [
+                {
+                 "thumbnailBottomOverlayViewModel": {
+                  "progressBar": {
+                   "thumbnailOverlayProgressBarViewModel": {
+                    "startPercent": 27
+                   }
+                  },
+                  "badges": [
+                   {
+                    "thumbnailBadgeViewModel": {
+                     "text": "31:48"
+                    }
+                   }
+                  ]
+                 }
+                },
+                {
+                 "thumbnailHoverOverlayToggleActionsViewModel": {
+                  "buttons": []
+                 }
+                }
+               ]
+              }
+             },
+             "metadata": {
+              "lockupMetadataViewModel": {
+               "title": {
+                "content": "How tides work"
+               },
+               "metadata": {
+                "contentMetadataViewModel": {
+                 "metadataRows": [
+                  {
+                   "metadataParts": [
+                    {
+                     "text": {
+                      "content": "Ocean Notes"
+                     }
+                    },
+                    {
+                     "text": {
+                      "content": "1.2K views"
+                     }
+                    }
+                   ]
+                  }
+                 ]
+                }
+               }
+              }
+             }
+            }
+           }
+          }
+         },
+         {
+          "richItemRenderer": {
+           "content": {
+            "lockupViewModel": {
+             "contentId": "fakeVidDone",
+             "contentType": "LOCKUP_CONTENT_TYPE_VIDEO",
+             "contentImage": {
+              "thumbnailViewModel": {
+               "overlays": [
+                {
+                 "thumbnailBottomOverlayViewModel": {
+                  "progressBar": {
+                   "thumbnailOverlayProgressBarViewModel": {
+                    "startPercent": 100
+                   }
+                  },
+                  "badges": [
+                   {
+                    "thumbnailBadgeViewModel": {
+                     "text": "18:02"
+                    }
+                   }
+                  ]
+                 }
+                },
+                {
+                 "thumbnailHoverOverlayToggleActionsViewModel": {
+                  "buttons": []
+                 }
+                }
+               ]
+              }
+             },
+             "metadata": {
+              "lockupMetadataViewModel": {
+               "title": {
+                "content": "Night sky in October"
+               },
+               "metadata": {
+                "contentMetadataViewModel": {
+                 "metadataRows": [
+                  {
+                   "metadataParts": [
+                    {
+                     "text": {
+                      "content": "Star Guide"
+                     }
+                    },
+                    {
+                     "text": {
+                      "content": "1.2K views"
+                     }
+                    }
+                   ]
+                  }
+                 ]
+                }
+               }
+              }
+             }
+            }
+           }
+          }
+         },
+         {
+          "richItemRenderer": {
+           "content": {
+            "lockupViewModel": {
+             "contentId": "fakeVidTenP",
+             "contentType": "LOCKUP_CONTENT_TYPE_VIDEO",
+             "contentImage": {
+              "thumbnailViewModel": {
+               "overlays": [
+                {
+                 "thumbnailBottomOverlayViewModel": {
+                  "progressBar": {
+                   "thumbnailOverlayProgressBarViewModel": {
+                    "startPercent": 10
+                   }
+                  },
+                  "badges": [
+                   {
+                    "thumbnailBadgeViewModel": {
+                     "text": "9:40"
+                    }
+                   }
+                  ]
+                 }
+                },
+                {
+                 "thumbnailHoverOverlayToggleActionsViewModel": {
+                  "buttons": []
+                 }
+                }
+               ]
+              }
+             },
+             "metadata": {
+              "lockupMetadataViewModel": {
+               "title": {
+                "content": "Bread scoring patterns"
+               },
+               "metadata": {
+                "contentMetadataViewModel": {
+                 "metadataRows": [
+                  {
+                   "metadataParts": [
+                    {
+                     "text": {
+                      "content": "Crumb Lab"
+                     }
+                    },
+                    {
+                     "text": {
+                      "content": "1.2K views"
+                     }
+                    }
+                   ]
+                  }
+                 ]
+                }
+               }
+              }
+             }
+            }
+           }
+          }
+         },
+         {
+          "richItemRenderer": {
+           "content": {
+            "lockupViewModel": {
+             "contentId": "fakeVidSeen",
+             "contentType": "LOCKUP_CONTENT_TYPE_VIDEO",
+             "contentImage": {
+              "thumbnailViewModel": {
+               "overlays": [
+                {
+                 "thumbnailBottomOverlayViewModel": {
+                  "progressBar": {
+                   "thumbnailOverlayProgressBarViewModel": {
+                    "startPercent": 100
+                   }
+                  },
+                  "badges": [
+                   {
+                    "thumbnailBadgeViewModel": {
+                     "text": "44:10"
+                    }
+                   }
+                  ]
+                 }
+                },
+                {
+                 "thumbnailHoverOverlayToggleActionsViewModel": {
+                  "buttons": []
+                 }
+                }
+               ]
+              }
+             },
+             "metadata": {
+              "lockupMetadataViewModel": {
+               "title": {
+                "content": "The quiet history of maps"
+               },
+               "metadata": {
+                "contentMetadataViewModel": {
+                 "metadataRows": [
+                  {
+                   "metadataParts": [
+                    {
+                     "text": {
+                      "content": "Map Room"
+                     }
+                    },
+                    {
+                     "text": {
+                      "content": "1.2K views"
+                     }
+                    }
+                   ]
+                  }
+                 ]
+                }
+               }
+              }
+             }
+            }
+           }
+          }
+         },
+         {
+          "continuationItemRenderer": {
+           "trigger": "CONTINUATION_TRIGGER_ON_ITEM_SHOWN",
+           "continuationEndpoint": {
+            "continuationCommand": {
+             "token": "FAKE_SUBS_CONTINUATION",
+             "request": "CONTINUATION_REQUEST_TYPE_BROWSE"
+            }
+           }
+          }
+         }
+        ]
+       }
+      }
+     }
+    }
+   ]
+  }
+ }
+}

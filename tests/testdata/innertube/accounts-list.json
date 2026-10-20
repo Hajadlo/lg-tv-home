@@ -1,0 +1,112 @@
+{
+ "responseContext": {
+  "mainAppWebResponseContext": {
+   "datasyncId": "100000000000000000001||",
+   "loggedOut": false
+  }
+ },
+ "selectText": {
+  "simpleText": "OK"
+ },
+ "actions": [
+  {
+   "updateChannelSwitcherPageAction": {
+    "page": {
+     "channelSwitcherPageRenderer": {
+      "header": {
+       "channelSwitcherHeaderRenderer": {
+        "title": {
+         "runs": [
+          {
+           "text": "All channels"
+          }
+         ]
+        }
+       }
+      },
+      "contents": [
+       {
+        "buttonRenderer": {
+         "text": {
+          "runs": [
+           {
+            "text": "Create a channel"
+           }
+          ]
+         }
+        }
+       },
+       {
+        "accountItemRenderer": {
+         "accountName": {
+          "simpleText": "Main Account"
+         },
+         "isSelected": true,
+         "isDisabled": false,
+         "hasChannel": true,
+         "serviceEndpoint": {
+          "selectActiveIdentityEndpoint": {
+           "supportedTokens": [
+            {
+             "accountStateToken": {
+              "hasChannel": true,
+              "isMerged": true,
+              "obfuscatedGaiaId": "100000000000000000001"
+             }
+            },
+            {
+             "datasyncIdToken": {
+              "datasyncIdToken": "100000000000000000001||"
+             }
+            }
+           ]
+          }
+         },
+         "channelHandle": {
+          "simpleText": "@mainaccount"
+         }
+        }
+       },
+       {
+        "accountItemRenderer": {
+         "accountName": {
+          "simpleText": "Couch Channel"
+         },
+         "isSelected": false,
+         "isDisabled": false,
+         "hasChannel": true,
+         "serviceEndpoint": {
+          "selectActiveIdentityEndpoint": {
+           "supportedTokens": [
+            {
+             "pageIdToken": {
+              "pageId": "200000000000000000002"
+             }
+            },
+            {
+             "accountStateToken": {
+              "hasChannel": true,
+              "isMerged": true,
+              "obfuscatedGaiaId": "200000000000000000002"
+             }
+            },
+            {
+             "datasyncIdToken": {
+              "datasyncIdToken": "200000000000000000002||100000000000000000001"
+             }
+            }
+           ]
+          }
+         },
+         "channelHandle": {
+          "simpleText": "@couchchannel"
+         }
+        }
+       }
+      ]
+     }
+    }
+   }
+  }
+ ]
+}

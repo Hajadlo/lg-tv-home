@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Close a background app on the TV through Dev Mode (ares), if it is running.
+# Play on PC uses it: Moonlight honours its stream-the-PC launch params only on
+# a cold start. SSAP system.launcher/close answers "403 access denied" for a
+# normal pairing, so ares is the route. Device name: [tv] ares_device.
+# Usage: close-app <app-id>   (exit 0 when closed or not running)
+set -euo pipefail
+app=${1:?usage: close-app <app-id>}
+here="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
+device="$(python3 "$here/../server/tvconfig.py" get tv.ares_device)"
+if ! ares-launch --device "$device" --running 2>/dev/null | grep -qx "$app"; then
+    echo "$app not running"
+    exit 0
+fi
+ares-launch --device "$device" --close "$app" >/dev/null
+echo "closed $app"

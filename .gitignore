@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+# Never commit a filled-in config or any secret.
+config.toml
+*.ipk

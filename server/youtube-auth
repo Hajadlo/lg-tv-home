@@ -1,0 +1,75 @@
+#!/usr/bin/env python3
+"""Connect TV Home to the user's YouTube account (one time, Google device flow).
+
+Prints a URL and a code; open the URL on any device, sign in to the YouTube
+account, enter the code and allow read-only access. The refresh token is
+stored in ~/.config/tv-home/google-oauth-token.json (mode 600) and never
+printed. The running server picks it up on its next /api/home; no restart.
+
+  youtube-auth [--client PATH] [--token PATH] [--check]
+
+--check only verifies the stored token by listing the subscriptions count.
+"""
+
+from __future__ import annotations
+
+import argparse
+import os
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+import google_oauth  # noqa: E402
+
+CONFIG_DIR = Path(os.environ.get("TVHOME_CONFIG_DIR", Path.home() / ".config/tv-home"))
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--client", type=Path, default=CONFIG_DIR / "google-oauth-client.json")
+    parser.add_argument("--token", type=Path, default=CONFIG_DIR / "google-oauth-token.json")
+    parser.add_argument("--check", action="store_true")
+    args = parser.parse_args()
+
+    client = google_oauth.load_client(args.client)
+    if not client:
+        print(f"youtube-auth: no OAuth client JSON at {args.client}", file=sys.stderr)
+        return 2
+    if args.check:
+        auth = google_oauth.GoogleAuth(args.client, args.token)
+        try:
+            channels = google_oauth.fetch_subscriptions(auth)
+        except (google_oauth.AuthMissing, google_oauth.AuthExpired, google_oauth.GoogleError) as exc:
+            print(f"youtube-auth: {type(exc).__name__}: {exc}", file=sys.stderr)
+            return 1
+        print(f"ok: {len(channels)} subscriptions")
+        return 0
+
+    device = google_oauth.start_device_flow(client)
+    url = device.get("verification_url") or device.get("verification_uri")
+    minutes = int(device.get("expires_in", 1800)) // 60
+    print(f"""
+  1. On a phone or computer open:  {url}
+  2. Enter this code:              {device['user_code']}
+  3. Pick the YouTube account and allow read-only access.
+
+Waiting up to {minutes} min for approval (Ctrl-C to give up)...""", flush=True)
+    try:
+        token = google_oauth.poll_device_flow(client, device)
+        google_oauth.save_token(args.token, token)
+    except google_oauth.GoogleError as exc:
+        print(f"youtube-auth: {exc}", file=sys.stderr)
+        return 1
+    print(f"Connected. Refresh token saved to {args.token} (mode 600).")
+    auth = google_oauth.GoogleAuth(args.client, args.token)
+    try:
+        print(f"Subscriptions visible: {len(google_oauth.fetch_subscriptions(auth))}")
+    except Exception as exc:  # the token is saved either way
+        print(f"youtube-auth: saved, but listing subscriptions failed: {exc}", file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

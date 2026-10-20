@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+# Package the TV Home webOS app from config.toml, install it on the TV, launch it.
+#
+#   tv/install [--ui-url URL] [--no-launch] [--params JSON] [--keep]
+#
+# Reads [server] url, [tv] ares_device, app_id, title and the Moonlight values
+# from ~/.config/tv-home/config.toml (TVHOME_CONFIG overrides). The UI itself
+# is served by the TV Home server, so design changes need no reinstall; run
+# this after changing tv/app/ or the [tv]/[steam] settings. Needs the ares CLI
+# (npm i -g @webos-tools/cli) and a registered device with its Dev Mode key.
+set -euo pipefail
+
+here="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
+cfg() { python3 "$here/../server/tvconfig.py" get "$1"; }
+ui_url=""
+launch=1
+params=""
+keep=0
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --ui-url) ui_url="$2"; shift 2 ;;
+        --no-launch) launch=0; shift ;;
+        --params) params="$2"; shift 2 ;;
+        --keep) keep=1; shift ;;
+        -h|--help) sed -n '2,11p' "$0"; exit 0 ;;
+        *) echo "unknown argument: $1" >&2; exit 2 ;;
+    esac
+done
+
+for cmd in ares-package ares-install ares-launch; do
+    command -v "$cmd" >/dev/null || { echo "$cmd not on PATH (npm i -g @webos-tools/cli)" >&2; exit 1; }
+done
+device="$(cfg tv.ares_device)"
+app_id="$(cfg tv.app_id)"
+
+build="$(mktemp -d "${XDG_CACHE_HOME:-$HOME/.cache}/tv-home-build.XXXXXX")"
+[ "$keep" = 1 ] && echo "build dir: $build" || trap 'rm -rf "$build"' EXIT
+mkdir -p "$build/app" "$build/out"
+python3 "$here/render.py" "$build/app" ${ui_url:+--ui-url "$ui_url"}
+
+ares-package "$build/app" -o "$build/out" >/dev/null
+ipk="$(ls "$build/out"/*.ipk)"
+echo "packaged $(basename "$ipk")"
+ares-install --device "$device" "$ipk"
+if [ "$launch" = 1 ]; then
+    if [ -n "$params" ]; then
+        ares-launch --device "$device" "$app_id" --params "$params"
+    else
+        ares-launch --device "$device" "$app_id"
+    fi
+fi

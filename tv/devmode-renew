@@ -1,0 +1,181 @@
+#!/usr/bin/env python3
+"""Keep the LG TV's Developer Mode session alive (daily timer job).
+
+When the session runs out, the next real reboot turns Developer Mode off and
+webOS deletes every dev-installed app: TV Home, and YouTube AdFree and
+Moonlight when they were installed with ares too.
+
+How (the webosbrew dev-manager method, no remote needed):
+1. Read the session token from /var/luna/preferences/devmode_enabled over the
+   Dev Mode SSH (ares-novacom, device [tv] ares_device). Cache it in
+   ~/.config/tv-home/devmode-token (0600) so a TV in deep standby still renews.
+2. GET developer.lge.com/secure/CheckDevModeSession.dev   (remaining time)
+3. GET developer.lge.com/secure/ResetDevModeSession.dev   (back to the maximum)
+4. Check again and print before/after as one JSON line.
+
+On any failure it sends one ntfy ([ntfy] url in config.toml, or NTFY_URL) and
+exits 1. --via-app instead launches the Dev Mode app with extend=true (LG's
+documented `ares-launch com.palmdts.devmode -p extend=true`), which is
+visible on the TV, so it is never used by the timer.
+
+  devmode-renew [--check] [--via-app] [--dry-run] [--no-notify]
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import re
+import subprocess
+import sys
+import urllib.parse
+import urllib.request
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "server"))
+import tvconfig  # noqa: E402
+
+DEVICE = "tv"  # replaced by [tv] ares_device in main()
+TOKEN_FILE = tvconfig.CONFIG_DIR / "devmode-token"
+API = "https://developer.lge.com/secure/{}.dev"
+TOKEN_RE = re.compile(r"^[0-9A-Za-z]{16,}$")
+REMAINING_RE = re.compile(r"^(\d+):(\d{2}):(\d{2})$")
+WARN_HOURS = 72
+
+
+def parse_token(output: str) -> str | None:
+    """Pick the token line out of ares-novacom output ('[Info] ...' lines etc.)."""
+    for line in output.splitlines():
+        line = line.strip()
+        if TOKEN_RE.match(line):
+            return line
+    return None
+
+
+def parse_session(body: str) -> dict:
+    """CheckDevModeSession/ResetDevModeSession JSON -> {ok, hours, raw}.
+
+    Success looks like {"result":"success","errorCode":"200","errorMsg":"999:58:40"}
+    (errorMsg is the remaining time); failure e.g.
+    {"result":"fail","errorCode":"ERR_005","errorMsg":"Check user session"}.
+    """
+    try:
+        data = json.loads(body)
+    except ValueError:
+        return {"ok": False, "hours": None, "raw": body[:200]}
+    ok = data.get("result") == "success"
+    hours = None
+    m = REMAINING_RE.match(str(data.get("errorMsg", "")))
+    if ok and m:
+        h, mi, s = (int(x) for x in m.groups())
+        hours = round(h + mi / 60 + s / 3600, 2)
+    return {"ok": ok, "hours": hours, "raw": data}
+
+
+def read_token_from_tv(timeout: int = 40) -> str | None:
+    try:
+        r = subprocess.run(
+            ["ares-novacom", "--device", DEVICE, "--run", "cat /var/luna/preferences/devmode_enabled"],
+            capture_output=True, text=True, timeout=timeout)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    return parse_token(r.stdout) if r.returncode == 0 else None
+
+
+def load_token(refresh: bool = True) -> tuple[str | None, str]:
+    token = read_token_from_tv() if refresh else None
+    if token:
+        TOKEN_FILE.parent.mkdir(parents=True, exist_ok=True)
+        old = TOKEN_FILE.read_text().strip() if TOKEN_FILE.exists() else None
+        if old != token:
+            fd = os.open(TOKEN_FILE, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+            with os.fdopen(fd, "w") as f:
+                f.write(token + "\n")
+        return token, "tv"
+    if TOKEN_FILE.exists():
+        return TOKEN_FILE.read_text().strip() or None, "cache"
+    return None, "none"
+
+
+def call(method: str, token: str) -> dict:
+    url = API.format(method) + "?" + urllib.parse.urlencode({"sessionToken": token})
+    try:
+        with urllib.request.urlopen(url, timeout=20) as resp:
+            return parse_session(resp.read().decode("utf-8", "replace"))
+    except OSError as exc:
+        return {"ok": False, "hours": None, "raw": f"{type(exc).__name__}: {exc}"}
+
+
+def notify(title: str, message: str) -> None:
+    url = os.environ.get("NTFY_URL") or tvconfig.load()["ntfy"]["url"]
+    if not url:
+        print(f"devmode-renew: no ntfy url; would have sent: {title} | {message}", file=sys.stderr)
+        return
+    root, topic = url.rsplit("/", 1)
+    body = json.dumps({"topic": urllib.parse.unquote(topic), "title": title, "message": message,
+                       "tags": ["tv"], "priority": 4}).encode()
+    req = urllib.request.Request(root + "/", data=body, headers={"Content-Type": "application/json"})
+    try:
+        urllib.request.urlopen(req, timeout=15).close()
+    except OSError as exc:
+        print(f"devmode-renew: ntfy failed: {exc}", file=sys.stderr)
+
+
+def via_app() -> int:
+    r = subprocess.run(["ares-launch", "--device", DEVICE, "com.palmdts.devmode", "-p", "extend=true"],
+                       capture_output=True, text=True, timeout=60)
+    print((r.stdout + r.stderr).strip())
+    return r.returncode
+
+
+def main(argv=None) -> int:
+    global DEVICE
+    DEVICE = tvconfig.load()["tv"]["ares_device"]
+    p = argparse.ArgumentParser(description="Renew the LG TV Developer Mode session")
+    p.add_argument("--check", action="store_true", help="only report the remaining time")
+    p.add_argument("--via-app", action="store_true", help="extend through the Dev Mode app (visible on the TV)")
+    p.add_argument("--dry-run", action="store_true", help="read token and check, do not reset")
+    p.add_argument("--no-notify", action="store_true")
+    args = p.parse_args(argv)
+
+    if args.via_app:
+        return via_app()
+
+    token, source = load_token()
+    out = {"token_source": source}
+    if not token:
+        out["error"] = "no Dev Mode token (TV unreachable over Dev Mode SSH and no cache)"
+        print(json.dumps(out))
+        if not args.no_notify:
+            notify("TV Dev Mode: renewal failed", out["error"])
+        return 1
+
+    before = call("CheckDevModeSession", token)
+    out["before_hours"] = before["hours"]
+    if not before["ok"]:
+        out["before"] = before["raw"]
+    if not (args.check or args.dry_run):
+        reset = call("ResetDevModeSession", token)
+        out["reset"] = reset["raw"]
+        after = call("CheckDevModeSession", token)
+        out["after_hours"] = after["hours"]
+        ok = reset["ok"] and after["ok"]
+    else:
+        ok = before["ok"]
+    print(json.dumps(out))
+
+    hours = out.get("after_hours", out.get("before_hours"))
+    if not ok:
+        msg = ("LG rejected the Dev Mode session token: %s. If the session has expired, "
+               "Dev Mode turns off at the next real reboot and deletes TV Home and the other "
+               "dev-installed apps. See SETUP.md (Developer Mode)." % json.dumps(before["raw"]))
+        if not args.no_notify:
+            notify("TV Dev Mode: renewal failed", msg)
+        return 1
+    if hours is not None and hours < WARN_HOURS and not args.no_notify:
+        notify("TV Dev Mode: session low", f"{hours:.0f} h left after renewal")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

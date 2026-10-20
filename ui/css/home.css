@@ -1,0 +1,716 @@
+/* TV Home: a dark room lit by the app you are looking at.
+   Fixed 1920x1080 canvas, remote driven. Only transform and opacity animate;
+   every gradient is a static layer painted once, never animated or masked.
+
+   Frame budget on the TV (one GPU thread rasters and composites): nothing
+   that fades may hold other composited layers (no offscreen passes), no
+   colour transitions (they run on the main thread), and the layers that move
+   during a room switch (stages, washes, room pictures) exist and are
+   rastered before it starts (will-change). */
+
+@font-face {
+  font-family: "Fraunces";
+  src: url("../fonts/Fraunces.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: block;
+}
+@font-face {
+  font-family: "Hanken Grotesk";
+  src: url("../fonts/HankenGrotesk.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: block;
+}
+
+:root {
+  --bone: 236 230 218;            /* warm off-white, used with alpha */
+  --serif: "Fraunces", Georgia, serif;
+  --sans: "Hanken Grotesk", system-ui, sans-serif;
+  --sx: 96px;                     /* horizontal safe margin */
+  --sy: 64px;                     /* vertical safe margin */
+  --rows-top: 860px;
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --t: 0.22s;                     /* every interactive transition */
+}
+
+/* Each room brings its own light. A stage and a door carry their room's
+   variables for good; the few pieces of chrome that follow the open room
+   (the tab line, settings, status, the fades) take them from body.room-*,
+   so a switch restyles only those, never the whole page. The wash layers
+   below are pre-baked so no gradient is ever repainted during a transition. */
+.stage[data-room="jellyfin"], .door[data-app="jellyfin"],
+body.room-jellyfin #doorline, body.room-jellyfin #settings, body.room-jellyfin #status,
+body.room-jellyfin #top-fade, body.room-jellyfin #rows-fade {
+  --accent: #00a4dc;
+  --accent-rgb: 0 164 220;
+  --accent2: #aa5cc3;
+  --tint: #0c0916;
+  --tint-rgb: 12 9 22;
+  --line: linear-gradient(90deg, #aa5cc3, #00a4dc);
+}
+.stage[data-room="youtube"], .door[data-app="youtube"],
+body.room-youtube #doorline, body.room-youtube #settings, body.room-youtube #status,
+body.room-youtube #top-fade, body.room-youtube #rows-fade {
+  --accent: #ff0033;
+  --accent-rgb: 255 0 51;
+  --accent2: #ff0033;
+  --tint: #0f0a0b;
+  --tint-rgb: 15 10 11;
+  --line: #ff0033;
+}
+.stage[data-room="pc"], .door[data-app="pc"],
+body.room-pc #doorline, body.room-pc #settings, body.room-pc #status,
+body.room-pc #top-fade, body.room-pc #rows-fade {
+  --accent: #66c0f4;
+  --accent-rgb: 102 192 244;
+  --accent2: #1b2838;
+  --tint: #171a21;
+  --tint-rgb: 23 26 33;
+  --line: #66c0f4;
+}
+
+html, body {
+  margin: 0;
+  width: 1920px;
+  height: 1080px;
+  overflow: hidden;
+  background: #000;
+  color: rgb(var(--bone));
+  font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  cursor: default;
+}
+body { position: relative; }
+
+button {
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+button:focus { outline: none; }
+h1, h2, p { margin: 0; }
+
+/* ---------- the window: backdrop image, then the room's wash ---------- */
+
+/* The window is never faded as a whole (that would draw both pictures into
+   an offscreen pass first): each picture dims itself over the black page,
+   which looks the same. Each room keeps its own picture layer; two more
+   carry the idle slideshow. */
+#backdrop {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 1360px;
+  height: 900px;
+}
+#backdrop .bd {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity var(--t) ease;
+  will-change: opacity;
+}
+body.ready #backdrop .bd.on { opacity: 0.8; }
+body.ready #backdrop .bd[data-room="youtube"].on { opacity: 0.66; } /* thumbnails shout; the window dims a little */
+body.ready.browsing #backdrop .bd.on { opacity: 0.12; } /* after the YouTube rule: same weight, so this wins */
+/* Steam banners are 3:1: a wide band along the top; the Steam wash fades it out below. */
+#backdrop .bd.wide { height: 640px; object-position: 60% center; }
+
+/* One wash per room: the vignette in the room's tint plus its ambient glow.
+   Static layers; only their opacity crosses over when the room changes. */
+.wash {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--t) ease;
+  will-change: opacity; /* rastered once; a layer at opacity 0 is not drawn */
+}
+.wash.on { opacity: 1; }
+body.idle .wash.on { opacity: 0.55; transition: opacity 3s ease; }
+.wash[data-room="jellyfin"] {
+  background:
+    radial-gradient(1100px 760px at 8% 100%, rgba(170, 92, 195, 0.38), rgba(170, 92, 195, 0) 65%),
+    radial-gradient(1300px 640px at 54% 108%, rgba(0, 164, 220, 0.26), rgba(0, 164, 220, 0) 65%),
+    linear-gradient(90deg, #0c0916 0, #0c0916 600px, rgba(12, 9, 22, 0.96) 800px, rgba(12, 9, 22, 0.7) 1000px, rgba(12, 9, 22, 0) 1280px),
+    linear-gradient(0deg, #0c0916 0, #0c0916 200px, rgba(12, 9, 22, 0.9) 330px, rgba(12, 9, 22, 0) 640px),
+    linear-gradient(180deg, rgba(12, 9, 22, 0.8) 0, rgba(12, 9, 22, 0.35) 160px, rgba(12, 9, 22, 0) 360px);
+}
+.wash[data-room="youtube"] {
+  background:
+    radial-gradient(1100px 760px at 8% 100%, rgba(255, 0, 51, 0.3), rgba(255, 0, 51, 0) 65%),
+    radial-gradient(1300px 640px at 54% 108%, rgba(255, 60, 40, 0.12), rgba(255, 60, 40, 0) 65%),
+    linear-gradient(90deg, #0f0a0b 0, #0f0a0b 600px, rgba(15, 10, 11, 0.96) 800px, rgba(15, 10, 11, 0.7) 1000px, rgba(15, 10, 11, 0) 1280px),
+    linear-gradient(0deg, #0f0a0b 0, #0f0a0b 200px, rgba(15, 10, 11, 0.9) 330px, rgba(15, 10, 11, 0) 640px),
+    linear-gradient(180deg, rgba(15, 10, 11, 0.8) 0, rgba(15, 10, 11, 0.35) 160px, rgba(15, 10, 11, 0) 360px);
+}
+.wash[data-room="pc"] {
+  background:
+    radial-gradient(1000px 700px at 8% 100%, rgba(102, 192, 244, 0.24), rgba(102, 192, 244, 0) 65%),
+    radial-gradient(1500px 800px at 40% 110%, #1b2838, rgba(27, 40, 56, 0) 70%),
+    linear-gradient(180deg, rgba(23, 26, 33, 0) 380px, #171a21 640px),
+    linear-gradient(90deg, #171a21 0, #171a21 600px, rgba(23, 26, 33, 0.96) 800px, rgba(23, 26, 33, 0.7) 1000px, rgba(23, 26, 33, 0) 1280px),
+    linear-gradient(180deg, rgba(23, 26, 33, 0.8) 0, rgba(23, 26, 33, 0.35) 160px, rgba(23, 26, 33, 0) 360px);
+}
+
+/* ---------- static chrome ---------- */
+
+#ui {
+  position: absolute;
+  inset: 0; /* pixel shift against burn-in: a 2 px jump every two minutes, never animated */
+}
+
+#top {
+  position: absolute;
+  left: var(--sx);
+  top: var(--sy);
+  opacity: 0;
+  transform: translateY(14px);
+  transform-origin: left top;
+  transition: opacity 0.6s ease, transform 0.6s var(--ease);
+  will-change: transform; /* scales when browsing starts: already a layer, nothing to paint then */
+}
+body.ready #top { opacity: 1; transform: none; }
+body.browsing #top { transform: scale(0.72); transition: transform var(--t) var(--ease); }
+/* While browsing only the clock stays; the rows scroll up under it. */
+#top-info { transition: opacity var(--t) ease; } /* one layer fades, not four */
+body.browsing #top-info { opacity: 0; }
+
+#clock {
+  font-family: var(--serif);
+  font-weight: 300;
+  font-size: 176px;
+  line-height: 0.92;
+  letter-spacing: -0.025em;
+  font-variation-settings: "opsz" 144, "SOFT" 40, "WONK" 0;
+  font-variant-numeric: lining-nums tabular-nums;
+  color: rgb(var(--bone) / 0.88);
+  margin-left: -8px; /* optical: pull the figure to the margin */
+}
+#date {
+  margin-top: 26px;
+  font-size: 32px;
+  line-height: 1.25;
+  color: rgb(var(--bone) / 0.8);
+}
+#weather {
+  font-size: 32px;
+  line-height: 1.25;
+  color: rgb(var(--bone) / 0.5);
+}
+#weather-note, #status {
+  margin-top: 6px;
+  font-size: 26px;
+  line-height: 1.25;
+  color: rgb(var(--bone) / 0.38);
+}
+#status { color: var(--accent); opacity: 0.9; }
+#weather-note:empty, #status:empty, #weather:empty { display: none; }
+
+#settings {
+  position: absolute;
+  right: var(--sx);
+  top: calc(var(--sy) + 10px);
+  display: flex;
+  gap: 40px;
+  opacity: 0;
+  transition: opacity 0.6s ease 0.2s;
+}
+body.ready #settings { opacity: 1; }
+.setting {
+  position: relative;
+  font-size: 26px;
+  line-height: 1;
+  padding-bottom: 10px;
+  color: rgb(var(--bone) / 0.5);
+  text-shadow: 0 1px 14px rgba(0, 0, 0, 0.9);
+}
+.setting-lg { margin-left: 28px; }
+.setting::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: var(--accent);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform var(--t) var(--ease);
+}
+.setting.focus { color: rgb(var(--bone)); }
+.setting.focus::after { transform: scaleX(1); }
+
+/* ---------- the scrolling stage ---------- */
+
+#scroll {
+  position: absolute;
+  inset: 0;
+  transition: transform 0.25s var(--ease);
+  will-change: transform;
+}
+
+#doors {
+  position: absolute;
+  left: var(--sx);
+  top: 392px;
+  display: flex;
+  gap: 64px;
+  align-items: flex-start;
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 0.6s ease 0.1s, transform 0.6s var(--ease) 0.1s;
+  will-change: opacity; /* fades when browsing starts: already a layer, nothing to paint then */
+}
+body.ready #doors { opacity: 1; transform: none; }
+body.browsing #doors { opacity: 0; transition: opacity var(--t) ease; }
+
+.door { display: block; }
+.door-word {
+  position: relative;
+  display: inline-block;
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 64px;
+  line-height: 1;
+  font-variation-settings: "opsz" 72, "SOFT" 20, "WONK" 0;
+  color: rgb(var(--bone) / 0.5);
+  padding-bottom: 14px;
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.8);
+}
+.door.focus .door-word { color: rgb(var(--bone)); }
+/* The open door wears its own colour: Jellyfin's gradient, YouTube's white
+   wordmark on red, Steam's light blue. */
+.door.selected[data-app="jellyfin"] .door-word {
+  color: transparent;
+  background: linear-gradient(100deg, #c57ad8 0%, #aa5cc3 30%, #00a4dc 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  text-shadow: none;
+}
+.door.selected[data-app="youtube"] .door-word { color: rgb(var(--bone)); }
+.door.selected[data-app="pc"] .door-word { color: #66c0f4; }
+
+/* One line travels between the words: the tab indicator, in the room's colour. */
+#doorline {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--line);
+  box-shadow: 0 0 18px rgb(var(--accent-rgb) / 0.55);
+  transform-origin: left;
+  transform: scaleX(0);
+  opacity: 0;
+  transition: transform 0.25s var(--ease), opacity var(--t);
+  /* no will-change: a layer inside #doors would make its fade an offscreen pass */
+  pointer-events: none;
+}
+#doorline.on { opacity: 1; }
+#doorline.hidden { opacity: 0; }
+.door-note {
+  display: block;
+  margin-top: 10px;
+  min-height: 30px;
+  font-size: 22px;
+  line-height: 1.3;
+  color: rgb(var(--bone) / 0.42);
+  white-space: nowrap;
+}
+.door.selected .door-note { color: rgb(var(--accent-rgb) / 0.9); }
+.door.selected[data-app="pc"] .door-note { color: rgb(var(--bone) / 0.7); }
+.door-note.alert { color: rgb(var(--bone) / 0.7); }
+
+/* Play on PC: the underline becomes a progress track while the desktop wakes */
+.door-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 4px;
+  border-radius: 2px;
+  background: rgb(var(--bone) / 0.16);
+  opacity: 0;
+  transition: opacity var(--t);
+}
+.door-bar i {
+  position: absolute;
+  inset: 0;
+  border-radius: 2px;
+  background: #66c0f4;
+  box-shadow: 0 0 16px rgba(102, 192, 244, 0.6);
+  transform: scaleX(0);
+  transform-origin: left;
+}
+.door.waking .door-bar, .door.ready .door-bar { opacity: 1; }
+
+/* ---------- stages: one room per door, swapped with a short slide ----------
+   Each stage is one layer the size of its content box (not the screen), so
+   its fade is cheap; the slide and fade are compositor animations started
+   from app.js (0.22 s fade, 0.25 s 22 px slide). Hidden stages still take
+   pointer hits; app.js looks through them. (Toggling pointer-events would
+   restyle every element inside, it is inherited: 8 ms per stage on the TV;
+   swapping z-index repaints every stage.) */
+
+.stage {
+  position: absolute;
+  left: var(--sx);
+  top: 556px;
+  width: 1728px;
+  height: 524px;
+  opacity: 0;
+  will-change: transform, opacity;
+}
+.stage.on { opacity: 1; }
+/* Warming: a room built off screen is drawn at a never-visible opacity for a
+   moment, so its painting, image decodes and raster happen while the page is
+   still instead of on the first switch to it (at opacity 0 Chrome skips them). */
+.stage.warm:not(.on), #backdrop .bd.warm:not(.on) { opacity: 0.002; transition: none; }
+
+/* ---------- hero ---------- */
+
+.hero {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 760px;
+}
+.stage.first .hero {
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 0.6s ease 0.2s, transform 0.6s var(--ease) 0.2s;
+}
+body.ready .stage.first .hero { opacity: 1; transform: none; }
+.stage .hero { transition: opacity var(--t) ease; }
+body.browsing .stage .hero, body.ready.browsing .stage.first .hero { opacity: 0; transition: opacity var(--t) ease; }
+
+.hero-btn {
+  display: block;
+  position: relative;
+  width: 100%;
+  padding-bottom: 26px;
+}
+.hero-logo {
+  display: block;
+  max-height: 130px;
+  max-width: 460px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  object-position: left bottom;
+  transform-origin: left bottom;
+  transition: transform 0.25s var(--ease), opacity var(--t) ease;
+  opacity: 0;
+}
+.hero-logo.loaded { opacity: 1; }
+.hero-title {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 64px;
+  line-height: 1.02;
+  font-variation-settings: "opsz" 96, "SOFT" 30, "WONK" 0;
+  color: rgb(var(--bone) / 0.92);
+  max-width: 720px;
+  transform-origin: left bottom;
+  transition: transform 0.25s var(--ease);
+}
+/* Video titles run long: smaller, at most two lines. */
+.hero-title.long {
+  font-size: 50px;
+  line-height: 1.08;
+  font-variation-settings: "opsz" 72, "SOFT" 30, "WONK" 0;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+.hero-btn.focus .hero-logo, .hero-btn.focus .hero-title { transform: scale(1.04); }
+.hero-sub {
+  margin-top: 20px;
+  font-size: 30px;
+  font-weight: 500;
+  line-height: 1.3;
+  color: rgb(var(--bone) / 0.86);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hero-meta {
+  margin-top: 6px;
+  font-size: 26px;
+  line-height: 1.3;
+  color: rgb(var(--bone) / 0.5);
+}
+.hero-meta .verb {
+  display: none;
+  color: var(--accent);
+}
+.stage[data-room="pc"] .hero-meta .verb { color: #66c0f4; }
+.hero-meta .verb::before {
+  content: "";
+  display: inline-block;
+  width: 0;
+  height: 0;
+  margin-right: 12px;
+  vertical-align: 1px;
+  border-style: solid;
+  border-width: 9px 0 9px 15px;
+  border-color: transparent transparent transparent currentColor;
+}
+.hero-btn.focus .hero-meta { color: rgb(var(--bone) / 0.85); }
+.hero-btn.focus .hero-meta .verb { display: inline; }
+/* While the desktop wakes, the Steam hero carries the state instead of its verb. */
+.hero-pc { display: none; color: #66c0f4; }
+.hero-pc.alert { color: rgb(var(--bone) / 0.85); }
+.hero-meta.busy .verb, .hero-btn.focus .hero-meta.busy .verb, .hero-meta.busy .meta { display: none; }
+.hero-meta.busy .hero-pc { display: inline; }
+.hero-progress {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 360px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgb(var(--bone) / 0.16);
+}
+.hero-progress i {
+  position: absolute;
+  inset: 0;
+  border-radius: 2px;
+  background: var(--line);
+  transform-origin: left;
+}
+.hero-empty {
+  font-size: 28px;
+  line-height: 1.4;
+  color: rgb(var(--bone) / 0.5);
+  max-width: 640px;
+}
+.hero-empty b {
+  display: block;
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 48px;
+  line-height: 1.1;
+  font-variation-settings: "opsz" 72, "SOFT" 30, "WONK" 0;
+  color: rgb(var(--bone) / 0.85);
+  margin-bottom: 18px;
+}
+
+/* ---------- grids: every group wraps into full rows ---------- */
+
+.rows {
+  position: absolute;
+  left: 0;
+  top: calc(var(--rows-top) - 556px); /* page y: the stage top plus this */
+  width: 1728px;
+  padding-bottom: 120px;
+}
+.stage.first .rows { opacity: 0; transition: opacity 0.6s ease 0.3s; }
+body.ready .stage.first .rows { opacity: 1; }
+
+.row { position: relative; margin-bottom: 44px; }
+.row h2 {
+  margin-bottom: 18px;
+  font-size: 24px;
+  font-weight: 400;
+  line-height: 1;
+  color: rgb(var(--bone) / 0.5);
+}
+.row.focus h2 { color: rgb(var(--bone) / 0.88); }
+/* 5 columns of 16:9 frames (323x182), 8 columns of covers (195x292). */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(5, 323px);
+  gap: 30px 28px;
+  --tile-h: 182px;
+  --text-h: 68px;
+}
+.row.video .grid { --text-h: 92px; }
+.row.portrait .grid {
+  grid-template-columns: repeat(8, 195px);
+  gap: 26px 24px;
+  --tile-h: 292px;
+  --text-h: 56px;
+}
+.tile {
+  position: relative;
+  display: block;
+  width: 100%;
+  transition: transform var(--t) var(--ease);
+}
+.tile.focus { transform: scale(1.06); z-index: 2; }
+.tile-img {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: var(--tile-h);
+  border-radius: 6px;
+  overflow: hidden;
+  background: rgb(var(--bone) / 0.07);
+}
+.tile-img img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity var(--t) ease;
+}
+.tile-img img.loaded { opacity: 1; }
+.tile-ring {
+  position: absolute;
+  left: -7px;
+  right: -7px;
+  top: -7px;
+  height: calc(var(--tile-h) + 14px);
+  box-sizing: border-box;
+  border: 3px solid var(--accent);
+  border-radius: 12px;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6), 0 0 28px rgb(var(--accent-rgb) / 0.55);
+  opacity: 0;
+  transition: opacity var(--t);
+  pointer-events: none;
+}
+.tile.focus .tile-ring { opacity: 1; }
+/* No picture: the name set in type inside the frame. */
+.tile-name {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  padding: 18px;
+  box-sizing: border-box;
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 30px;
+  line-height: 1.05;
+  font-variation-settings: "opsz" 48, "SOFT" 30, "WONK" 0;
+  color: rgb(var(--bone) / 0.7);
+  background: linear-gradient(160deg, rgb(var(--bone) / 0.1), rgb(var(--bone) / 0.03));
+}
+.tile-progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 4px;
+  background: rgba(0, 0, 0, 0.55);
+}
+.tile-progress i {
+  position: absolute;
+  inset: 0;
+  background: var(--line);
+  transform-origin: left;
+}
+/* Fixed text heights keep every row the same pitch whatever the title length. */
+.tile-text {
+  display: block;
+  height: var(--text-h);
+  margin-top: 12px;
+  overflow: hidden;
+}
+.tile-title {
+  display: block;
+  font-size: 24px;
+  font-weight: 500;
+  line-height: 1.25;
+  color: rgb(var(--bone) / 0.72);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tile.focus .tile-title { color: rgb(var(--bone)); }
+/* Video titles carry the meaning: two lines. Game covers name themselves: one. */
+.row.video .tile-title {
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.row.portrait .tile-title { font-size: 22px; }
+.tile-sub {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 20px;
+  line-height: 1.3;
+  color: rgb(var(--bone) / 0.42);
+  white-space: nowrap;
+}
+.tile-sub .who { overflow: hidden; text-overflow: ellipsis; }
+.tile-sub .when { flex: 0 0 auto; font-variant-numeric: tabular-nums; }
+.tile.focus .tile-sub .when { color: rgb(var(--accent-rgb) / 0.95); }
+.stage[data-room="pc"] .tile.focus .tile-sub .when { color: #66c0f4; }
+
+/* Two tinted fades: the bottom one softens the first grid row at rest, the top
+   one recedes the rows that scroll up under the clock while browsing. */
+#rows-fade, #top-fade {
+  position: absolute;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+  transition: opacity var(--t) ease;
+  will-change: opacity;
+}
+#rows-fade {
+  bottom: 0;
+  height: 170px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0, var(--tint) 100%);
+}
+body.browsing #rows-fade { opacity: 0; }
+#top-fade {
+  top: 0;
+  height: 330px;
+  opacity: 0;
+  background: linear-gradient(180deg, var(--tint) 0, var(--tint) 170px, rgb(var(--tint-rgb) / 0.85) 250px, rgb(var(--tint-rgb) / 0) 330px);
+}
+body.browsing #top-fade { opacity: 1; }
+
+/* ---------- toast ---------- */
+
+#toast {
+  position: absolute;
+  left: 50%;
+  top: 60px;
+  transform: translate(-50%, -12px);
+  padding: 16px 32px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.72);
+  font-size: 26px;
+  line-height: 1;
+  color: rgb(var(--bone));
+  opacity: 0;
+  transition: opacity var(--t) ease, transform 0.25s var(--ease);
+  pointer-events: none;
+}
+#toast.on { opacity: 1; transform: translate(-50%, 0); }
+
+/* ---------- idle: the room goes dark ---------- */
+
+/* The doors and the open stage fade one by one: fading #scroll as a whole
+   would need an offscreen pass for the layers inside it. Waking shows them at once. */
+body.idle #doors, body.idle .stage.on, body.idle #settings, body.idle #top-info, body.idle #toast {
+  opacity: 0;
+  transition: opacity 2.5s ease;
+}
+body.idle #clock { opacity: 0.42; }
+#clock { transition: opacity 2.5s ease; }
+body.idle #top { transition: opacity 0.9s ease, transform 40s linear; }
+body.ready.idle #backdrop .bd.on { opacity: 0.32; }
+body.idle #backdrop .bd { transition: opacity 2.5s ease; } /* the slow drift is an animation from app.js */
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0.01ms !important; }
+}

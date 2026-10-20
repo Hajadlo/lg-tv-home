@@ -1,0 +1,969 @@
+{
+ "responseContext": {
+  "mainAppWebResponseContext": {
+   "datasyncId": "200000000000000000002||100000000000000000001",
+   "loggedOut": false
+  }
+ },
+ "contents": {
+  "twoColumnBrowseResultsRenderer": {
+   "tabs": [
+    {
+     "tabRenderer": {
+      "selected": true,
+      "content": {
+       "sectionListRenderer": {
+        "contents": [
+         {
+          "itemSectionRenderer": {
+           "header": {
+            "itemSectionHeaderRenderer": {
+             "title": {
+              "runs": [
+               {
+                "text": "Today"
+               }
+              ]
+             }
+            }
+           },
+           "contents": [
+            {
+             "lockupViewModel": {
+              "contentId": "fakeHist001",
+              "contentType": "LOCKUP_CONTENT_TYPE_VIDEO",
+              "contentImage": {
+               "thumbnailViewModel": {
+                "overlays": [
+                 {
+                  "thumbnailBottomOverlayViewModel": {
+                   "progressBar": {
+                    "thumbnailOverlayProgressBarViewModel": {
+                     "startPercent": 25
+                    }
+                   },
+                   "badges": [
+                    {
+                     "thumbnailBadgeViewModel": {
+                      "text": "12:34"
+                     }
+                    }
+                   ]
+                  }
+                 },
+                 {
+                  "thumbnailHoverOverlayToggleActionsViewModel": {
+                   "buttons": []
+                  }
+                 }
+                ]
+               }
+              },
+              "metadata": {
+               "lockupMetadataViewModel": {
+                "title": {
+                 "content": "Knitting a scarf"
+                },
+                "metadata": {
+                 "contentMetadataViewModel": {
+                  "metadataRows": [
+                   {
+                    "metadataParts": [
+                     {
+                      "text": {
+                       "content": "Yarn Club"
+                      }
+                     },
+                     {
+                      "text": {
+                       "content": "1.2K views"
+                      }
+                     }
+                    ]
+                   }
+                  ]
+                 }
+                }
+               }
+              }
+             }
+            },
+            {
+             "lockupViewModel": {
+              "contentId": "fakeVidTenP",
+              "contentType": "LOCKUP_CONTENT_TYPE_VIDEO",
+              "contentImage": {
+               "thumbnailViewModel": {
+                "overlays": [
+                 {
+                  "thumbnailBottomOverlayViewModel": {
+                   "progressBar": {
+                    "thumbnailOverlayProgressBarViewModel": {
+                     "startPercent": 10
+                    }
+                   },
+                   "badges": [
+                    {
+                     "thumbnailBadgeViewModel": {
+                      "text": "12:34"
+                     }
+                    }
+                   ]
+                  }
+                 },
+                 {
+                  "thumbnailHoverOverlayToggleActionsViewModel": {
+                   "buttons": []
+                  }
+                 }
+                ]
+               }
+              },
+              "metadata": {
+               "lockupMetadataViewModel": {
+                "title": {
+                 "content": "Bread scoring patterns"
+                },
+                "metadata": {
+                 "contentMetadataViewModel": {
+                  "metadataRows": [
+                   {
+                    "metadataParts": [
+                     {
+                      "text": {
+                       "content": "Crumb Lab"
+                      }
+                     },
+                     {
+                      "text": {
+                       "content": "1.2K views"
+                      }
+                     }
+                    ]
+                   }
+                  ]
+                 }
+                }
+               }
+              }
+             }
+            },
+            {
+             "lockupViewModel": {
+              "contentId": "fakeVidDone",
+              "contentType": "LOCKUP_CONTENT_TYPE_VIDEO",
+              "contentImage": {
+               "thumbnailViewModel": {
+                "overlays": [
+                 {
+                  "thumbnailBottomOverlayViewModel": {
+                   "progressBar": {
+                    "thumbnailOverlayProgressBarViewModel": {
+                     "startPercent": 100
+                    }
+                   },
+                   "badges": [
+                    {
+                     "thumbnailBadgeViewModel": {
+                      "text": "12:34"
+                     }
+                    }
+                   ]
+                  }
+                 },
+                 {
+                  "thumbnailHoverOverlayToggleActionsViewModel": {
+                   "buttons": []
+                  }
+                 }
+                ]
+               }
+              },
+              "metadata": {
+               "lockupMetadataViewModel": {
+                "title": {
+                 "content": "Night sky in October"
+                },
+                "metadata": {
+                 "contentMetadataViewModel": {
+                  "metadataRows": [
+                   {
+                    "metadataParts": [
+                     {
+                      "text": {
+                       "content": "Star Guide"
+                      }
+                     },
+                     {
+                      "text": {
+                       "content": "1.2K views"
+                      }
+                     }
+                    ]
+                   }
+                  ]
+                 }
+                }
+               }
+              }
+             }
+            },
+            {
+             "lockupViewModel": {
+              "contentId": "fakeHist002",
+              "contentType": "LOCKUP_CONTENT_TYPE_VIDEO",
+              "contentImage": {
+               "thumbnailViewModel": {
+                "overlays": [
+                 {
+                  "thumbnailBottomOverlayViewModel": {
+                   "progressBar": {
+                    "thumbnailOverlayProgressBarViewModel": {
+                     "startPercent": 100
+                    }
+                   },
+                   "badges": [
+                    {
+                     "thumbnailBadgeViewModel": {
+                      "text": "12:34"
+                     }
+                    }
+                   ]
+                  }
+                 },
+                 {
+                  "thumbnailHoverOverlayToggleActionsViewModel": {
+                   "buttons": []
+                  }
+                 }
+                ]
+               }
+              },
+              "metadata": {
+               "lockupMetadataViewModel": {
+                "title": {
+                 "content": "Repairing a bike chain"
+                },
+                "metadata": {
+                 "contentMetadataViewModel": {
+                  "metadataRows": [
+                   {
+                    "metadataParts": [
+                     {
+                      "text": {
+                       "content": "Pedal Shop"
+                      }
+                     },
+                     {
+                      "text": {
+                       "content": "1.2K views"
+                      }
+                     }
+                    ]
+                   }
+                  ]
+                 }
+                }
+               }
+              }
+             }
+            }
+           ]
+          }
+         },
+         {
+          "itemSectionRenderer": {
+           "header": {
+            "itemSectionHeaderRenderer": {
+             "title": {
+              "runs": [
+               {
+                "text": "Yesterday"
+               }
+              ]
+             }
+            }
+           },
+           "contents": [
+            {
+             "lockupViewModel": {
+              "contentId": "fakeHist003",
+              "contentType": "LOCKUP_CONTENT_TYPE_VIDEO",
+              "contentImage": {
+               "thumbnailViewModel": {
+                "overlays": [
+                 {
+                  "thumbnailBottomOverlayViewModel": {
+                   "progressBar": {
+                    "thumbnailOverlayProgressBarViewModel": {
+                     "startPercent": 100
+                    }
+                   },
+                   "badges": [
+                    {
+                     "thumbnailBadgeViewModel": {
+                      "text": "12:34"
+                     }
+                    }
+                   ]
+                  }
+                 },
+                 {
+                  "thumbnailHoverOverlayToggleActionsViewModel": {
+                   "buttons": []
+                  }
+                 }
+                ]
+               }
+              },
+              "metadata": {
+               "lockupMetadataViewModel": {
+                "title": {
+                 "content": "A walk through the old town"
+                },
+                "metadata": {
+                 "contentMetadataViewModel": {
+                  "metadataRows": [
+                   {
+                    "metadataParts": [
+                     {
+                      "text": {
+                       "content": "Slow Travel"
+                      }
+                     },
+                     {
+                      "text": {
+                       "content": "1.2K views"
+                      }
+                     }
+                    ]
+                   }
+                  ]
+                 }
+                }
+               }
+              }
+             }
+            },
+            {
+             "lockupViewModel": {
+              "contentId": "fakeHist004",
+              "contentType": "LOCKUP_CONTENT_TYPE_VIDEO",
+              "contentImage": {
+               "thumbnailViewModel": {
+                "overlays": [
+                 {
+                  "thumbnailBottomOverlayViewModel": {
+                   "progressBar": {
+                    "thumbnailOverlayProgressBarViewModel": {
+                     "startPercent": 100
+                    }
+                   },
+                   "badges": [
+                    {
+                     "thumbnailBadgeViewModel": {
+                      "text": "12:34"
+                     }
+                    }
+                   ]
+                  }
+                 },
+                 {
+                  "thumbnailHoverOverlayToggleActionsViewModel": {
+                   "buttons": []
+                  }
+                 }
+                ]
+               }
+              },
+              "metadata": {
+               "lockupMetadataViewModel": {
+                "title": {
+                 "content": "Chess openings for beginners"
+                },
+                "metadata": {
+                 "contentMetadataViewModel": {
+                  "metadataRows": [
+                   {
+                    "metadataParts": [
+                     {
+                      "text": {
+                       "content": "Board Room"
+                      }
+                     },
+                     {
+                      "text": {
+                       "content": "1.2K views"
+                      }
+                     }
+                    ]
+                   }
+                  ]
+                 }
+                }
+               }
+              }
+             }
+            },
+            {
+             "lockupViewModel": {
+              "contentId": "fakeHist005",
+              "contentType": "LOCKUP_CONTENT_TYPE_VIDEO",
+              "contentImage": {
+               "thumbnailViewModel": {
+                "overlays": [
+                 {
+                  "thumbnailBottomOverlayViewModel": {
+                   "progressBar": {
+                    "thumbnailOverlayProgressBarViewModel": {
+                     "startPercent": 44
+                    }
+                   },
+                   "badges": [
+                    {
+                     "thumbnailBadgeViewModel": {
+                      "text": "12:34"
+                     }
+                    }
+                   ]
+                  }
+                 },
+                 {
+                  "thumbnailHoverOverlayToggleActionsViewModel": {
+                   "buttons": []
+                  }
+                 }
+                ]
+               }
+              },
+              "metadata": {
+               "lockupMetadataViewModel": {
+                "title": {
+                 "content": "Growing tomatoes indoors"
+                },
+                "metadata": {
+                 "contentMetadataViewModel": {
+                  "metadataRows": [
+                   {
+                    "metadataParts": [
+                     {
+                      "text": {
+                       "content": "Green Shelf"
+                      }
+                     },
+                     {
+                      "text": {
+                       "content": "1.2K views"
+                      }
+                     }
+                    ]
+                   }
+                  ]
+                 }
+                }
+               }
+              }
+             }
+            },
+            {
+             "lockupViewModel": {
+              "contentId": "fakeHist006",
+              "contentType": "LOCKUP_CONTENT_TYPE_VIDEO",
+              "contentImage": {
+               "thumbnailViewModel": {
+                "overlays": [
+                 {
+                  "thumbnailBottomOverlayViewModel": {
+                   "progressBar": {
+                    "thumbnailOverlayProgressBarViewModel": {
+                     "startPercent": 10
+                    }
+                   },
+                   "badges": [
+                    {
+                     "thumbnailBadgeViewModel": {
+                      "text": "12:34"
+                     }
+                    }
+                   ]
+                  }
+                 },
+                 {
+                  "thumbnailHoverOverlayToggleActionsViewModel": {
+                   "buttons": []
+                  }
+                 }
+                ]
+               }
+              },
+              "metadata": {
+               "lockupMetadataViewModel": {
+                "title": {
+                 "content": "Lofi beats to fold laundry to"
+                },
+                "metadata": {
+                 "contentMetadataViewModel": {
+                  "metadataRows": [
+                   {
+                    "metadataParts": [
+                     {
+                      "text": {
+                       "content": "Calm Tunes - Topic"
+                      }
+                     },
+                     {
+                      "text": {
+                       "content": "1.2K views"
+                      }
+                     }
+                    ]
+                   }
+                  ]
+                 }
+                }
+               }
+              }
+             }
+            },
+            {
+             "lockupViewModel": {
+              "contentId": "fakeVidPart",
+              "contentType": "LOCKUP_CONTENT_TYPE_VIDEO",
+              "contentImage": {
+               "thumbnailViewModel": {
+                "overlays": [
+                 {
+                  "thumbnailBottomOverlayViewModel": {
+                   "progressBar": {
+                    "thumbnailOverlayProgressBarViewModel": {
+                     "startPercent": 27
+                    }
+                   },
+                   "badges": [
+                    {
+                     "thumbnailBadgeViewModel": {
+                      "text": "12:34"
+                     }
+                    }
+                   ]
+                  }
+                 },
+                 {
+                  "thumbnailHoverOverlayToggleActionsViewModel": {
+                   "buttons": []
+                  }
+                 }
+                ]
+               }
+              },
+              "metadata": {
+               "lockupMetadataViewModel": {
+                "title": {
+                 "content": "How tides work"
+                },
+                "metadata": {
+                 "contentMetadataViewModel": {
+                  "metadataRows": [
+                   {
+                    "metadataParts": [
+                     {
+                      "text": {
+                       "content": "Ocean Notes"
+                      }
+                     },
+                     {
+                      "text": {
+                       "content": "1.2K views"
+                      }
+                     }
+                    ]
+                   }
+                  ]
+                 }
+                }
+               }
+              }
+             }
+            }
+           ]
+          }
+         },
+         {
+          "itemSectionRenderer": {
+           "header": {
+            "itemSectionHeaderRenderer": {
+             "title": {
+              "simpleText": "Sunday"
+             }
+            }
+           },
+           "contents": [
+            {
+             "lockupViewModel": {
+              "contentId": "fakeHist007",
+              "contentType": "LOCKUP_CONTENT_TYPE_VIDEO",
+              "contentImage": {
+               "thumbnailViewModel": {
+                "overlays": [
+                 {
+                  "thumbnailBottomOverlayViewModel": {
+                   "progressBar": {
+                    "thumbnailOverlayProgressBarViewModel": {
+                     "startPercent": 100
+                    }
+                   },
+                   "badges": [
+                    {
+                     "thumbnailBadgeViewModel": {
+                      "text": "12:34"
+                     }
+                    }
+                   ]
+                  }
+                 },
+                 {
+                  "thumbnailHoverOverlayToggleActionsViewModel": {
+                   "buttons": []
+                  }
+                 }
+                ]
+               }
+              },
+              "metadata": {
+               "lockupMetadataViewModel": {
+                "title": {
+                 "content": "Paper planes that fly far"
+                },
+                "metadata": {
+                 "contentMetadataViewModel": {
+                  "metadataRows": [
+                   {
+                    "metadataParts": [
+                     {
+                      "text": {
+                       "content": "Fold It"
+                      }
+                     },
+                     {
+                      "text": {
+                       "content": "1.2K views"
+                      }
+                     }
+                    ]
+                   }
+                  ]
+                 }
+                }
+               }
+              }
+             }
+            },
+            {
+             "lockupViewModel": {
+              "contentId": "fakeHist008",
+              "contentType": "LOCKUP_CONTENT_TYPE_VIDEO",
+              "contentImage": {
+               "thumbnailViewModel": {
+                "overlays": [
+                 {
+                  "thumbnailBottomOverlayViewModel": {
+                   "progressBar": {
+                    "thumbnailOverlayProgressBarViewModel": {
+                     "startPercent": 100
+                    }
+                   },
+                   "badges": [
+                    {
+                     "thumbnailBadgeViewModel": {
+                      "text": "12:34"
+                     }
+                    }
+                   ]
+                  }
+                 },
+                 {
+                  "thumbnailHoverOverlayToggleActionsViewModel": {
+                   "buttons": []
+                  }
+                 }
+                ]
+               }
+              },
+              "metadata": {
+               "lockupMetadataViewModel": {
+                "title": {
+                 "content": "Making ramen at home"
+                },
+                "metadata": {
+                 "contentMetadataViewModel": {
+                  "metadataRows": [
+                   {
+                    "metadataParts": [
+                     {
+                      "text": {
+                       "content": "Crumb Lab"
+                      }
+                     },
+                     {
+                      "text": {
+                       "content": "1.2K views"
+                      }
+                     }
+                    ]
+                   }
+                  ]
+                 }
+                }
+               }
+              }
+             }
+            },
+            {
+             "lockupViewModel": {
+              "contentId": "fakeVidSeen",
+              "contentType": "LOCKUP_CONTENT_TYPE_VIDEO",
+              "contentImage": {
+               "thumbnailViewModel": {
+                "overlays": [
+                 {
+                  "thumbnailBottomOverlayViewModel": {
+                   "progressBar": {
+                    "thumbnailOverlayProgressBarViewModel": {
+                     "startPercent": 100
+                    }
+                   },
+                   "badges": [
+                    {
+                     "thumbnailBadgeViewModel": {
+                      "text": "12:34"
+                     }
+                    }
+                   ]
+                  }
+                 },
+                 {
+                  "thumbnailHoverOverlayToggleActionsViewModel": {
+                   "buttons": []
+                  }
+                 }
+                ]
+               }
+              },
+              "metadata": {
+               "lockupMetadataViewModel": {
+                "title": {
+                 "content": "The quiet history of maps"
+                },
+                "metadata": {
+                 "contentMetadataViewModel": {
+                  "metadataRows": [
+                   {
+                    "metadataParts": [
+                     {
+                      "text": {
+                       "content": "Map Room"
+                      }
+                     },
+                     {
+                      "text": {
+                       "content": "1.2K views"
+                      }
+                     }
+                    ]
+                   }
+                  ]
+                 }
+                }
+               }
+              }
+             }
+            },
+            {
+             "lockupViewModel": {
+              "contentId": "fakeHist009",
+              "contentType": "LOCKUP_CONTENT_TYPE_VIDEO",
+              "contentImage": {
+               "thumbnailViewModel": {
+                "overlays": [
+                 {
+                  "thumbnailBottomOverlayViewModel": {
+                   "progressBar": {
+                    "thumbnailOverlayProgressBarViewModel": {
+                     "startPercent": 10
+                    }
+                   },
+                   "badges": [
+                    {
+                     "thumbnailBadgeViewModel": {
+                      "text": "12:34"
+                     }
+                    }
+                   ]
+                  }
+                 },
+                 {
+                  "thumbnailHoverOverlayToggleActionsViewModel": {
+                   "buttons": []
+                  }
+                 }
+                ]
+               }
+              },
+              "metadata": {
+               "lockupMetadataViewModel": {
+                "title": {
+                 "content": "Why cats knock things over"
+                },
+                "metadata": {
+                 "contentMetadataViewModel": {
+                  "metadataRows": [
+                   {
+                    "metadataParts": [
+                     {
+                      "text": {
+                       "content": "Pet Science"
+                      }
+                     },
+                     {
+                      "text": {
+                       "content": "1.2K views"
+                      }
+                     }
+                    ]
+                   }
+                  ]
+                 }
+                }
+               }
+              }
+             }
+            },
+            {
+             "lockupViewModel": {
+              "contentId": "fakeHist010",
+              "contentType": "LOCKUP_CONTENT_TYPE_VIDEO",
+              "contentImage": {
+               "thumbnailViewModel": {
+                "overlays": [
+                 {
+                  "thumbnailBottomOverlayViewModel": {
+                   "progressBar": {
+                    "thumbnailOverlayProgressBarViewModel": {
+                     "startPercent": 10
+                    }
+                   },
+                   "badges": [
+                    {
+                     "thumbnailBadgeViewModel": {
+                      "text": "12:34"
+                     }
+                    }
+                   ]
+                  }
+                 },
+                 {
+                  "thumbnailHoverOverlayToggleActionsViewModel": {
+                   "buttons": []
+                  }
+                 }
+                ]
+               }
+              },
+              "metadata": {
+               "lockupMetadataViewModel": {
+                "title": {
+                 "content": "Learning to juggle"
+                },
+                "metadata": {
+                 "contentMetadataViewModel": {
+                  "metadataRows": [
+                   {
+                    "metadataParts": [
+                     {
+                      "text": {
+                       "content": "Circus School"
+                      }
+                     },
+                     {
+                      "text": {
+                       "content": "1.2K views"
+                      }
+                     }
+                    ]
+                   }
+                  ]
+                 }
+                }
+               }
+              }
+             }
+            }
+           ]
+          }
+         },
+         {
+          "itemSectionRenderer": {
+           "header": {
+            "itemSectionHeaderRenderer": {
+             "title": {
+              "simpleText": "Friday"
+             }
+            }
+           },
+           "contents": [
+            {
+             "reelShelfRenderer": {
+              "title": {
+               "runs": [
+                {
+                 "text": "Shorts"
+                }
+               ]
+              },
+              "items": [
+               {
+                "shortsLockupViewModel": {
+                 "entityId": "shorts-shelf-item-fakeShort03",
+                 "overlayMetadata": {
+                  "primaryText": {
+                   "content": "a Short"
+                  }
+                 }
+                }
+               },
+               {
+                "shortsLockupViewModel": {
+                 "entityId": "shorts-shelf-item-fakeShort04",
+                 "overlayMetadata": {
+                  "primaryText": {
+                   "content": "a Short"
+                  }
+                 }
+                }
+               }
+              ]
+             }
+            }
+           ]
+          }
+         },
+         {
+          "continuationItemRenderer": {
+           "trigger": "CONTINUATION_TRIGGER_ON_ITEM_SHOWN",
+           "continuationEndpoint": {
+            "continuationCommand": {
+             "token": "FAKE_HISTORY_CONTINUATION",
+             "request": "CONTINUATION_REQUEST_TYPE_BROWSE"
+            }
+           }
+          }
+         }
+        ]
+       }
+      }
+     }
+    }
+   ]
+  }
+ }
+}

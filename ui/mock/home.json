@@ -1,0 +1,408 @@
+{
+ "now": "2026-10-20T13:00:00+02:00",
+ "features": {
+  "jellyfin": true,
+  "youtube": true,
+  "steam": true,
+  "weather": true
+ },
+ "weather": {
+  "tempC": 11,
+  "code": "rain",
+  "label": "Light rain",
+  "highC": 14,
+  "lowC": 7,
+  "note": "Rain until 21:00"
+ },
+ "jellyfin": {
+  "resume": [
+   {
+    "id": "e681d4c0edf5b3b96fc7a93a083b8981",
+    "kind": "episode",
+    "title": "Harbour Lights",
+    "subtitle": "S2 · E5 · Low Tide",
+    "year": 2024,
+    "progress": 0.42,
+    "minutesLeft": 26,
+    "backdrop": null,
+    "thumb": null,
+    "poster": null,
+    "logo": null,
+    "logoDark": null
+   },
+   {
+    "id": "7ad8785700ee6de7923a4175a0564a08",
+    "kind": "movie",
+    "title": "The Long Orchard",
+    "subtitle": null,
+    "year": 2021,
+    "progress": 0.18,
+    "minutesLeft": 94,
+    "backdrop": null,
+    "thumb": null,
+    "poster": null,
+    "logo": null,
+    "logoDark": null
+   },
+   {
+    "id": "e6724e133d808f3e84dff26052358319",
+    "kind": "episode",
+    "title": "Quiet Machines",
+    "subtitle": "S1 · E3 · Spare Parts",
+    "year": 2023,
+    "progress": 0.66,
+    "minutesLeft": 14,
+    "backdrop": null,
+    "thumb": null,
+    "poster": null,
+    "logo": null,
+    "logoDark": null
+   }
+  ],
+  "nextUp": [
+   {
+    "id": "52a8f551ca9ac3c19da604c84f0ccc3d",
+    "kind": "episode",
+    "title": "Harbour Lights",
+    "subtitle": "S2 · E6 · Fog Bell",
+    "year": 2024,
+    "progress": null,
+    "minutesLeft": null,
+    "backdrop": null,
+    "thumb": null,
+    "poster": null,
+    "logo": null,
+    "logoDark": null
+   },
+   {
+    "id": "1d75f18cf852687370d01479913c225d",
+    "kind": "episode",
+    "title": "Northbound",
+    "subtitle": "S3 · E1 · Thaw",
+    "year": 2022,
+    "progress": null,
+    "minutesLeft": null,
+    "backdrop": null,
+    "thumb": null,
+    "poster": null,
+    "logo": null,
+    "logoDark": null
+   },
+   {
+    "id": "7d08b58e3677a0a5cfc36c207d4b9d06",
+    "kind": "episode",
+    "title": "Kitchen Science",
+    "subtitle": "S1 · E8 · Salt",
+    "year": 2020,
+    "progress": null,
+    "minutesLeft": null,
+    "backdrop": null,
+    "thumb": null,
+    "poster": null,
+    "logo": null,
+    "logoDark": null
+   }
+  ],
+  "latest": [
+   {
+    "id": "8a06854c78fe8ff3351962756b4ae0ad",
+    "kind": "movie",
+    "title": "Paper Moons",
+    "subtitle": null,
+    "year": 2025,
+    "progress": null,
+    "minutesLeft": null,
+    "backdrop": null,
+    "thumb": null,
+    "poster": null,
+    "logo": null,
+    "logoDark": null
+   },
+   {
+    "id": "492fae864fac7c2e9e21c7b971b3ff5e",
+    "kind": "movie",
+    "title": "The Glass Valley",
+    "subtitle": null,
+    "year": 2024,
+    "progress": null,
+    "minutesLeft": null,
+    "backdrop": null,
+    "thumb": null,
+    "poster": null,
+    "logo": null,
+    "logoDark": null
+   },
+   {
+    "id": "c604afcf8e42e3d656d70efc84862336",
+    "kind": "movie",
+    "title": "Small Hours",
+    "subtitle": null,
+    "year": 2023,
+    "progress": null,
+    "minutesLeft": null,
+    "backdrop": null,
+    "thumb": null,
+    "poster": null,
+    "logo": null,
+    "logoDark": null
+   },
+   {
+    "id": "b3fd0a30b31dd1f78d114e3778456b5a",
+    "kind": "movie",
+    "title": "A Map of Rain",
+    "subtitle": null,
+    "year": 2025,
+    "progress": null,
+    "minutesLeft": null,
+    "backdrop": null,
+    "thumb": null,
+    "poster": null,
+    "logo": null,
+    "logoDark": null
+   },
+   {
+    "id": "216db4e9a2d2f31adaa7cc1343811889",
+    "kind": "series",
+    "title": "Lantern Street",
+    "subtitle": null,
+    "year": 2025,
+    "progress": null,
+    "minutesLeft": null,
+    "backdrop": null,
+    "thumb": null,
+    "poster": null,
+    "logo": null,
+    "logoDark": null
+   }
+  ]
+ },
+ "pc": {
+  "state": "off",
+  "sunshine": "unknown"
+ },
+ "system": {
+  "hddFreeGb": 412,
+  "hddTotalGb": 1863
+ },
+ "youtube": {
+  "updated": "2026-10-20T12:30:00+02:00",
+  "channelCount": 12,
+  "auth": "ok",
+  "watched": "ok",
+  "videos": [
+   {
+    "id": "mockVideo00",
+    "title": "Ten knots you should know",
+    "channel": "Rope Corner",
+    "channelId": "UCmockchannel00xxxxxxxx",
+    "published": "2026-10-20T10:00:00+00:00",
+    "views": 1200,
+    "progress": null,
+    "thumb": null
+   },
+   {
+    "id": "mockVideo01",
+    "title": "Sourdough, day three",
+    "channel": "Crumb Lab",
+    "channelId": "UCmockchannel01xxxxxxxx",
+    "published": "2026-10-19T11:00:00+00:00",
+    "views": 2400,
+    "progress": null,
+    "thumb": null
+   },
+   {
+    "id": "mockVideo02",
+    "title": "How tides work",
+    "channel": "Ocean Notes",
+    "channelId": "UCmockchannel02xxxxxxxx",
+    "published": "2026-10-18T12:00:00+00:00",
+    "views": 3600,
+    "progress": 0.3,
+    "thumb": null
+   },
+   {
+    "id": "mockVideo03",
+    "title": "Night sky in October",
+    "channel": "Star Guide",
+    "channelId": "UCmockchannel03xxxxxxxx",
+    "published": "2026-10-17T13:00:00+00:00",
+    "views": 4800,
+    "progress": null,
+    "thumb": null
+   },
+   {
+    "id": "mockVideo04",
+    "title": "Fixing a squeaky door",
+    "channel": "Woodshop Weekly",
+    "channelId": "UCmockchannel04xxxxxxxx",
+    "published": "2026-10-16T14:00:00+00:00",
+    "views": 6000,
+    "progress": null,
+    "thumb": null
+   },
+   {
+    "id": "mockVideo05",
+    "title": "The quiet history of maps",
+    "channel": "Map Room",
+    "channelId": "UCmockchannel05xxxxxxxx",
+    "published": "2026-10-15T15:00:00+00:00",
+    "views": 7200,
+    "progress": null,
+    "thumb": null
+   },
+   {
+    "id": "mockVideo06",
+    "title": "Growing tomatoes indoors",
+    "channel": "Green Shelf",
+    "channelId": "UCmockchannel06xxxxxxxx",
+    "published": "2026-10-14T16:00:00+00:00",
+    "views": 8400,
+    "progress": null,
+    "thumb": null
+   },
+   {
+    "id": "mockVideo07",
+    "title": "Chess openings for beginners",
+    "channel": "Board Room",
+    "channelId": "UCmockchannel07xxxxxxxx",
+    "published": "2026-10-13T17:00:00+00:00",
+    "views": 9600,
+    "progress": null,
+    "thumb": null
+   },
+   {
+    "id": "mockVideo08",
+    "title": "Paper planes that fly far",
+    "channel": "Fold It",
+    "channelId": "UCmockchannel08xxxxxxxx",
+    "published": "2026-10-12T10:00:00+00:00",
+    "views": 10800,
+    "progress": null,
+    "thumb": null
+   },
+   {
+    "id": "mockVideo09",
+    "title": "Why cats knock things over",
+    "channel": "Pet Science",
+    "channelId": "UCmockchannel09xxxxxxxx",
+    "published": "2026-10-11T11:00:00+00:00",
+    "views": 12000,
+    "progress": null,
+    "thumb": null
+   },
+   {
+    "id": "mockVideo10",
+    "title": "Learning to juggle",
+    "channel": "Circus School",
+    "channelId": "UCmockchannel10xxxxxxxx",
+    "published": "2026-10-10T12:00:00+00:00",
+    "views": 13200,
+    "progress": null,
+    "thumb": null
+   },
+   {
+    "id": "mockVideo11",
+    "title": "A walk through the old town",
+    "channel": "Slow Travel",
+    "channelId": "UCmockchannel11xxxxxxxx",
+    "published": "2026-10-09T13:00:00+00:00",
+    "views": 14400,
+    "progress": null,
+    "thumb": null
+   }
+  ],
+  "continue": [
+   {
+    "id": "mockVideo02",
+    "title": "How tides work",
+    "channel": "Ocean Notes",
+    "channelId": "UCmockchannel02xxxxxxxx",
+    "published": "2026-10-18T12:00:00+00:00",
+    "views": 3600,
+    "progress": 0.3,
+    "thumb": null
+   },
+   {
+    "id": "mockVideo06",
+    "title": "Growing tomatoes indoors",
+    "channel": "Green Shelf",
+    "channelId": "UCmockchannel06xxxxxxxx",
+    "published": "2026-10-14T16:00:00+00:00",
+    "views": 8400,
+    "progress": 0.55,
+    "thumb": null
+   }
+  ]
+ },
+ "steam": {
+  "updated": "2026-10-20T12:30:00+02:00",
+  "recent": [
+   {
+    "appid": 900000,
+    "name": "Starfield Courier",
+    "lastPlayed": "2026-10-19T20:00:00+02:00",
+    "playtimeH": 42.5,
+    "cover": null,
+    "hero": null,
+    "logo": null,
+    "header": null,
+    "logoDark": null
+   },
+   {
+    "appid": 900001,
+    "name": "Puzzle Lighthouse",
+    "lastPlayed": "2026-10-17T20:00:00+02:00",
+    "playtimeH": 8.0,
+    "cover": null,
+    "hero": null,
+    "logo": null,
+    "header": null,
+    "logoDark": null
+   },
+   {
+    "appid": 900002,
+    "name": "Rally Meadows",
+    "lastPlayed": "2026-10-15T20:00:00+02:00",
+    "playtimeH": 15.2,
+    "cover": null,
+    "hero": null,
+    "logo": null,
+    "header": null,
+    "logoDark": null
+   },
+   {
+    "appid": 900003,
+    "name": "Deep Garden",
+    "lastPlayed": "2026-10-13T20:00:00+02:00",
+    "playtimeH": 3.4,
+    "cover": null,
+    "hero": null,
+    "logo": null,
+    "header": null,
+    "logoDark": null
+   },
+   {
+    "appid": 900004,
+    "name": "Tiny Kingdoms",
+    "lastPlayed": "2026-10-11T20:00:00+02:00",
+    "playtimeH": 61.0,
+    "cover": null,
+    "hero": null,
+    "logo": null,
+    "header": null,
+    "logoDark": null
+   },
+   {
+    "appid": 900005,
+    "name": "Rocket Picnic",
+    "lastPlayed": "2026-10-09T20:00:00+02:00",
+    "playtimeH": 0.8,
+    "cover": null,
+    "hero": null,
+    "logo": null,
+    "header": null,
+    "logoDark": null
+   }
+  ]
+ }
+}

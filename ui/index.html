@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Home</title>
+<meta name="viewport" content="width=1920, initial-scale=1">
+<link rel="stylesheet" href="css/home.css">
+<!-- The TV bridge, filled from config.toml by the server. On the TV it defines
+     window.tvHome at once (webOS also injects the same file as a userScript
+     after load, on versions that support that); in a browser it does nothing. -->
+<script src="tv/bridge.js"></script>
+<script>
+  // The webOS shell provides window.tvHome; in a plain browser load the mock.
+  if (!window.tvHome) {
+    var s = document.createElement('script');
+    s.src = 'js/bridge-mock.js';
+    document.head.appendChild(s);
+  }
+</script>
+</head>
+<body>
+  <!-- One picture per room, kept decoded and rastered so a switch only moves
+       opacity; two more for the idle slideshow. -->
+  <div id="backdrop" aria-hidden="true">
+    <img class="bd" data-room="jellyfin" alt="">
+    <img class="bd" data-room="youtube" alt="">
+    <img class="bd" data-room="pc" alt="">
+    <img class="bd bd-idle" id="bd-a" alt="">
+    <img class="bd bd-idle" id="bd-b" alt="">
+  </div>
+  <!-- One pre-baked wash per room (tint, vignette, glow); only the open room's is on. -->
+  <div id="wash" aria-hidden="true">
+    <div class="wash" data-room="jellyfin"></div>
+    <div class="wash" data-room="youtube"></div>
+    <div class="wash" data-room="pc"></div>
+  </div>
+
+  <div id="ui">
+    <main id="scroll">
+      <!-- The doors are tabs: focusing one shows that app's room below it;
+           Enter opens the app. One lamp line travels between the words. -->
+      <nav id="doors" data-section="doors" aria-label="Apps">
+        <button class="door" data-item data-app="jellyfin">
+          <span class="door-word">Jellyfin</span>
+          <span class="door-note" id="jf-note"></span>
+        </button>
+        <button class="door" data-item data-app="youtube">
+          <span class="door-word">YouTube</span>
+          <span class="door-note" id="yt-note"></span>
+        </button>
+        <button class="door" id="door-pc" data-item data-app="pc">
+          <span class="door-word">Steam<span class="door-bar"><i></i></span></span>
+          <span class="door-note" id="pc-note"></span>
+        </button>
+        <span id="doorline" aria-hidden="true"></span>
+      </nav>
+
+      <!-- One stage per room, built when its data arrives and kept: a switch
+           only slides one out and the next in. -->
+      <div class="stage first on" data-room="jellyfin">
+        <section class="hero" data-section="hero"></section>
+        <div class="rows"></div>
+      </div>
+      <div class="stage" data-room="youtube">
+        <section class="hero" data-section="hero"></section>
+        <div class="rows"></div>
+      </div>
+      <div class="stage" data-room="pc">
+        <section class="hero" data-section="hero"></section>
+        <div class="rows"></div>
+      </div>
+    </main>
+    <!-- Chrome above the stage: a tinted fade recedes the rows that scroll under the clock. -->
+    <div id="top-fade" aria-hidden="true"></div>
+    <header id="top">
+      <div id="clock" aria-live="off">--:--</div>
+      <div id="top-info">
+        <div id="date"></div>
+        <div id="weather"></div>
+        <div id="weather-note"></div>
+        <div id="status"></div>
+      </div>
+    </header>
+
+    <nav id="settings" data-section="line" data-order="0" aria-label="TV settings">
+      <button class="setting" data-item data-settings="picture">Picture</button>
+      <button class="setting" data-item data-settings="sound">Sound</button>
+      <button class="setting" data-item data-settings="input">Inputs</button>
+      <button class="setting" data-item data-settings="all">All settings</button>
+      <button class="setting setting-lg" data-item data-lg>LG apps</button>
+    </nav>
+    <div id="rows-fade" aria-hidden="true"></div>
+  </div>
+
+  <div id="toast" aria-live="polite"></div>
+
+  <script src="js/api.js"></script>
+  <script src="js/nav.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,27 @@
+html, body {
+  margin: 0; width: 1920px; height: 1080px; overflow: hidden;
+  background: #0b0d10; color: #e8e6e3;
+  font-family: "LG Smart UI", "Museo Sans", system-ui, sans-serif;
+}
+#splash { position: fixed; inset: 0; background: #0b0d10; }
+#splash[hidden] { display: none; }
+main { padding: 120px 160px; box-sizing: border-box; height: 100%; }
+main[hidden] { display: none; }
+header { margin-bottom: 96px; }
+#clock { font-size: 120px; font-weight: 200; letter-spacing: -2px; line-height: 1; }
+#date { font-size: 36px; opacity: .6; margin-top: 16px; }
+.tiles { display: flex; gap: 48px; }
+.tile {
+  width: 440px; height: 260px; border: 0; border-radius: 28px;
+  background: #171a1f; color: inherit; font: inherit; font-size: 40px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px;
+  transition: transform .12s ease, background .12s ease;
+}
+.tile .glyph { font-size: 64px; opacity: .8; }
+.small { display: flex; gap: 28px; margin-top: 64px; }
+.pill {
+  border: 0; border-radius: 999px; padding: 18px 40px;
+  background: #171a1f; color: inherit; font: inherit; font-size: 30px;
+}
+.tile:focus, .pill:focus { outline: none; background: #e8e6e3; color: #0b0d10; transform: scale(1.04); }
+#status { position: absolute; bottom: 80px; left: 160px; font-size: 26px; opacity: .45; }

@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Home</title>
+<link rel="stylesheet" href="shell.css">
+<script src="bridge.js"></script>
+</head>
+<body>
+<main id="fallback" hidden>
+  <header>
+    <div id="clock">--:--</div>
+    <div id="date"></div>
+  </header>
+  <section class="tiles">
+    <button class="tile" data-app="jellyfin"><span class="glyph">&#9654;</span><span>Jellyfin</span></button>
+    <button class="tile" data-app="moonlight"><span class="glyph">&#9635;</span><span>Steam</span></button>
+    <button class="tile" data-app="youtube"><span class="glyph">&#9655;</span><span>YouTube</span></button>
+  </section>
+  <section class="small">
+    <button class="pill" data-settings="all">Settings</button>
+    <button class="pill" data-settings="input">Inputs</button>
+    <button class="pill" data-lghome="1">LG Home</button>
+  </section>
+  <p id="status">TV Home server unreachable. Retrying&hellip;</p>
+</main>
+<div id="splash"></div>
+<script src="shell.js"></script>
+</body>
+</html>
