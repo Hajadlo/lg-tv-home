@@ -78,7 +78,8 @@ All answers carry `Access-Control-Allow-Origin: *`.
   `backdrop`, `thumb`, `poster`, `logo` (relative image URLs), `logoDark`
   (the logo is too dark for the page; the UI sets the title in type).
 - `Video`: `id`, `title`, `channel`, `channelId`, `published`, `views`,
-  `progress` (0-1 or `null`), `thumb`.
+  `progress` (0-1 or `null`), `thumb`, `live` (true while the stream is on
+  air). Finished streams and scheduled streams or premieres are left out.
 - `Game`: `appid`, `name`, `lastPlayed`, `playtimeH`, `cover`, `hero`,
   `logo`, `header`, `logoDark`.
 

@@ -134,6 +134,36 @@ test('fetchYouTube: newest first, Shorts dropped (feed link and HEAD check), cac
   await assert.rejects(S.fetchYouTube(fakeHttp([[() => true, { status: 500 }]]), [CH], {}), /all 1 channel feeds failed/);
 });
 
+test('fetchYouTube: live badged, finished and scheduled streams left out, kinds cached', async () => {
+  const xml = feed([
+    { id: 'aaaaaaaaaaa', title: 'Video', published: '2026-10-15T10:00:00+00:00' },
+    { id: 'bbbbbbbbbbb', title: 'Finished stream', published: '2026-10-16T10:00:00+00:00' },
+    { id: 'ccccccccccc', title: 'Scheduled', published: '2026-10-17T10:00:00+00:00' },
+    { id: 'ddddddddddd', title: 'On air', published: '2026-10-18T10:00:00+00:00' },
+  ]);
+  const kinds = { aaaaaaaaaaa: '"isLiveContent":false', bbbbbbbbbbb: '"isLiveContent":true',
+                  ccccccccccc: '"isUpcoming":true', ddddddddddd: '"isLiveNow":true' };
+  const http = fakeHttp([
+    [has('feeds/videos.xml'), { status: 200, body: xml }],
+    [has('/shorts/'), { status: 303, headers: { location: 'https://www.youtube.com/watch?v=x' } }],
+    [has('/watch?v='), (req) => ({ status: 200, match: [kinds[req.url.slice(-11)]] })],
+  ]);
+  let now = 0;
+  const cache = {};
+  const yt = await S.fetchYouTube(http, [CH], cache, { now: () => now });
+  assert.deepEqual(yt.videos.map((v) => [v.id, v.live]), [['ddddddddddd', true], ['aaaaaaaaaaa', false]]);
+  const pages = () => http.calls.filter((c) => c.url.indexOf('/watch?v=') >= 0).length;
+  assert.equal(pages(), 4);
+  await S.fetchYouTube(http, [CH], cache, { now: () => now });
+  assert.equal(pages(), 4);  // nothing rechecked yet
+  kinds.ddddddddddd = '"isLiveContent":true';  // the stream ended
+  now = 11 * 60 * 1000;
+  const later = await S.fetchYouTube(http, [CH], cache, { now: () => now });
+  assert.deepEqual(later.videos.map((v) => v.id), ['aaaaaaaaaaa']);
+  assert.equal(pages(), 6);  // only the live and the scheduled one again
+  assert.equal(cache.kinds.bbbbbbbbbbb, 'stream');
+});
+
 const creds = { url: 'http://jf.invalid:8096', userId: 'u1', token: 'tok' };
 test('Jellyfin sign-in keeps only the token', async () => {
   const http = fakeHttp([[has('/Users/AuthenticateByName'), body({ AccessToken: 'tok', User: { Id: 'u1', Name: 'Ann' } })]]);

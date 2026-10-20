@@ -39,6 +39,15 @@ CONSENT = {"Cookie": "SOCS=CAI"}
 WATCH_URL = "https://www.youtube.com/watch?v={}"
 CATEGORY_RE = re.compile(rb'"category":"([^"]{1,60})"')
 MAX_CATEGORY_CHECKS = 25  # per refresh; answers are cached forever
+# Live state from the same watch page: "live" (on air now), "upcoming" (scheduled
+# stream or premiere), "stream" (a finished stream) or "video".
+LIVE_NOW_RE = re.compile(rb'"isLiveNow":(true|false)')
+LIVE_CONTENT_RE = re.compile(rb'"isLiveContent":(true|false)')
+UPCOMING_RE = re.compile(rb'"isUpcoming":true')
+FINAL_KINDS = ("video", "stream")  # cached forever; "live" and "upcoming" change
+KIND_RECHECK = 10 * 60.0
+MAX_KIND_CHECKS = 40  # watch pages per refresh; unchecked videos show as normal ones
+HIDDEN_KINDS = ("stream", "upcoming")  # finished streams are left out; scheduled ones until they go live
 NS = {"a": "http://www.w3.org/2005/Atom", "yt": "http://www.youtube.com/xml/schemas/2015",
       "media": "http://search.yahoo.com/mrss/"}
 VIDEO_LIMIT = 30
@@ -94,13 +103,33 @@ def check_short(video_id: str, fetch: net.Fetch = net.request) -> bool | None:
     return None
 
 
+def parse_watch(body: bytes) -> dict:
+    """Category ("Music", "Gaming", ...) and kind (see LIVE_NOW_RE) of a watch page; None where unclear."""
+    m = CATEGORY_RE.search(body)
+    category = m.group(1).decode("utf-8", "replace").replace("\\u0026", "&") if m else None
+    content = LIVE_CONTENT_RE.search(body)
+    now = LIVE_NOW_RE.search(body)
+    if UPCOMING_RE.search(body):
+        kind = "upcoming"
+    elif now and now.group(1) == b"true":
+        kind = "live"
+    elif content:
+        kind = "stream" if content.group(1) == b"true" else "video"
+    else:
+        kind = None
+    return {"category": category, "kind": kind}
+
+
+def watch_info(video_id: str, fetch: net.Fetch = net.request) -> dict | None:
+    """parse_watch of the public watch page; None when YouTube does not answer 200."""
+    resp = fetch(WATCH_URL.format(video_id), headers={**CONSENT, "Accept-Language": "en"}, timeout=15)
+    return parse_watch(resp.body) if resp.status == 200 else None
+
+
 def video_category(video_id: str, fetch: net.Fetch = net.request) -> str | None:
     """YouTube's category ("Music", "Gaming", ...) from the public watch page; None when unclear."""
-    resp = fetch(WATCH_URL.format(video_id), headers={**CONSENT, "Accept-Language": "en"}, timeout=15)
-    if resp.status != 200:
-        return None
-    m = CATEGORY_RE.search(resp.body)
-    return m.group(1).decode("utf-8", "replace").replace("\\u0026", "&") if m else None
+    info = watch_info(video_id, fetch)
+    return info["category"] if info else None
 
 
 def thumb_ok(data: bytes) -> bool:
@@ -116,7 +145,7 @@ def thumb_candidates(video_id: str) -> list[str]:
 def to_video(entry: dict, progress: float | None = None) -> dict:
     return {"id": entry["id"], "title": entry["title"], "channel": entry["channel"],
             "channelId": entry["channelId"], "published": entry["published"], "views": entry["views"],
-            "thumb": f"/api/yt/{entry['id']}/thumb",
+            "thumb": f"/api/yt/{entry['id']}/thumb", "live": bool(entry.get("live")),
             "progress": None if progress is None else round(min(1.0, max(0.0, progress)), 3)}
 
 
@@ -263,6 +292,10 @@ class YouTubeSource:
         self.shorts: dict[str, bool] = net.read_json(self.shorts_path, {}) or {}
         self.categories_path = cache_dir / "yt-categories.json"
         self.categories: dict[str, str] = net.read_json(self.categories_path, {}) or {}
+        self.kinds_path = cache_dir / "yt-kinds.json"
+        self.kinds: dict[str, str] = net.read_json(self.kinds_path, {}) or {}  # final kinds only
+        self._passing: dict[str, tuple[str, float]] = {}  # id -> ("live" | "upcoming", checked at)
+        self._clock = time.monotonic
         self._feeds: dict[str, dict] = {}  # channel id -> {"etag", "modified", "entries"}
 
     def wants_refresh(self) -> bool:
@@ -376,6 +409,7 @@ class YouTubeSource:
             candidates.append(e)
         picked: list[dict] = []
         checks = 0
+        self._kind_checks = 0
         i = 0
         while i < len(candidates) and len(picked) < self.limit:
             batch = candidates[i:i + (self.limit - len(picked))]
@@ -387,13 +421,63 @@ class YouTubeSource:
                     for vid, is_short in zip(unknown, pool.map(self._safe_check, unknown)):
                         if is_short is not None:
                             self.shorts[vid] = is_short
-            picked.extend(e for e in batch if not self.shorts.get(e["id"]))
+            normal = [e for e in batch if not self.shorts.get(e["id"])]
+            kinds = self._kinds([e["id"] for e in normal])
+            picked.extend({**e, "live": kinds.get(e["id"]) == "live"} for e in normal
+                          if kinds.get(e["id"]) not in HIDDEN_KINDS)
         self.shorts = {k: v for k, v in self.shorts.items() if k in seen}
+        self.kinds = {k: v for k, v in self.kinds.items() if k in seen}
+        self._passing = {k: v for k, v in self._passing.items() if k in seen}
+        try:
+            net.write_json(self.kinds_path, self.kinds)
+            net.write_json(self.categories_path, self.categories)
+        except OSError as exc:
+            log.warning("cannot save the live-state cache: %s", exc)
         try:
             net.write_json(self.shorts_path, self.shorts)
         except OSError as exc:
             log.warning("cannot save the Shorts cache: %s", exc)
         return [to_video(e, progress.get(e["id"])) for e in picked[:self.limit]]
+
+    def _kinds(self, ids: list[str]) -> dict[str, str | None]:
+        """id -> kind, from the caches or (up to MAX_KIND_CHECKS per refresh) the watch page."""
+        now = self._clock()
+        out: dict[str, str | None] = {}
+        todo = []
+        for vid in ids:
+            passing = self._passing.get(vid)
+            if vid in self.kinds:
+                out[vid] = self.kinds[vid]
+            elif passing and now - passing[1] < KIND_RECHECK:
+                out[vid] = passing[0]
+            else:
+                out[vid] = passing[0] if passing else None  # until checked
+                todo.append(vid)
+        todo = todo[:max(0, MAX_KIND_CHECKS - self._kind_checks)]
+        self._kind_checks += len(todo)
+        if not todo:
+            return out
+        with ThreadPoolExecutor(self.workers) as pool:
+            for vid, info in zip(todo, pool.map(self._safe_watch, todo)):
+                if not info or not info["kind"]:
+                    continue
+                kind = info["kind"]
+                out[vid] = kind
+                if kind in FINAL_KINDS:
+                    self.kinds[vid] = kind
+                    self._passing.pop(vid, None)
+                else:
+                    self._passing[vid] = (kind, now)
+                if info["category"] and vid not in self.categories:
+                    self.categories[vid] = info["category"]
+        return out
+
+    def _safe_watch(self, vid: str) -> dict | None:
+        try:
+            return watch_info(vid, self._fetch)
+        except OSError as exc:
+            log.info("watch page %s failed: %s", vid, exc)
+            return None
 
     def _safe_check(self, vid: str) -> bool | None:
         try:

@@ -375,8 +375,12 @@
     return img;
   }
   function ytTile(v) {
-    var frame = h("span", { class: "tile-img" }, [v.thumb ? ytThumb(v, W.tile) : null, progressBar(v.progress)]);
-    return tileButton("yt:" + v.id, frame, v.title, v.channel, v.published ? { age: "since", ts: v.published } : null);
+    var frame = h("span", { class: "tile-img" }, [v.thumb ? ytThumb(v, W.tile) : null, progressBar(v.progress),
+      v.live ? h("span", { class: "tile-live", text: "LIVE" }) : null]);
+    var tile = tileButton("yt:" + v.id, frame, v.title, v.channel,
+      v.live ? "live now" : (v.published ? { age: "since", ts: v.published } : null));
+    if (v.live) tile.classList.add("live");
+    return tile;
   }
   function renderYouTube(hero, rows, d) {
     if (down) {
@@ -396,8 +400,8 @@
     var top = vids[0];
     hero.appendChild(heroButton({
       launch: "yt:" + top.id, title: top.title, long: (top.title || "").length > 24,
-      sub: top.channel, verb: top.progress > 0 ? "Continue" : "Play",
-      meta: ago(top.published) ? { age: "ago", ts: top.published } : "",
+      sub: top.channel, verb: top.live ? "Watch live" : (top.progress > 0 ? "Continue" : "Play"),
+      meta: !top.live && ago(top.published) ? { age: "ago", ts: top.published } : "",
       progress: top.progress
     }));
     // One row of the newest, then what was left unfinished, then the rest.

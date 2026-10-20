@@ -620,6 +620,60 @@ class YouTubeSourceTest(unittest.TestCase):
         self.assertEqual([v["id"] for v in r.get()["videos"]], [vid(1)])  # stale value served
 
 
+def watch_route(kinds):
+    """Watch pages answering with the live flags of `kinds` (id -> live | upcoming | stream | video)."""
+    pages = {
+        "live": b'"category":"Gaming","isLiveContent":true,"isLiveNow":true',
+        "upcoming": b'"category":"Gaming","isLiveContent":true,"isUpcoming":true,"isLiveNow":false',
+        "stream": b'"category":"Gaming","isLiveContent":true,"isLiveNow":false',
+        "video": b'"category":"Education","isLiveContent":false',
+    }
+
+    def answer(url, method, headers, data):
+        kind = kinds.get(url.rsplit("=", 1)[1], "video")
+        return net.Response(200, {}, b"<html>" + pages[kind] + b"</html>")
+    return answer
+
+
+class YouTubeLiveTest(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.cache = Path(self.tmp.name)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_parse_watch_kinds(self):
+        page = watch_route({"l": "live", "u": "upcoming", "s": "stream"})
+        for vid_, kind in (("l", "live"), ("u", "upcoming"), ("s", "stream"), ("v", "video")):
+            info = youtube.parse_watch(page(f"x?v={vid_}", "GET", {}, None).body)
+            self.assertEqual(info["kind"], kind)
+        self.assertEqual(youtube.parse_watch(b"<html>consent</html>"), {"category": None, "kind": None})
+
+    def test_live_badged_streams_and_upcoming_left_out(self):
+        a = [(vid(i), f"2026-10-{10 + i:02d}T10:00:00+00:00", False) for i in range(1, 6)]
+        kinds = {vid(5): "live", vid(4): "stream", vid(3): "upcoming"}
+        web = FakeWeb({youtube.FEED_URL.format(CH_A): net.Response(200, {}, feed_xml(CH_A, "A", a)),
+                       "https://www.youtube.com/shorts/": shorts_route(set()),
+                       youtube.WATCH_URL.format(""): watch_route(kinds)})
+        src = youtube.YouTubeSource(youtube.StaticChannels([CH_A]), self.cache, fetch=web, workers=2)
+        now = [0.0]
+        src._clock = lambda: now[0]
+        out = src()["videos"]
+        self.assertEqual([(v["id"], v["live"]) for v in out], [(vid(5), True), (vid(2), False), (vid(1), False)])
+        self.assertEqual(src.categories[vid(1)], "Education")  # the same page fills the category cache
+        pages = lambda: len([c for c in web.calls if c["url"].startswith(youtube.WATCH_URL.format(""))])
+        self.assertEqual(pages(), 5)
+        src()  # finished streams and videos are cached; live and upcoming wait for the recheck
+        self.assertEqual(pages(), 5)
+        kinds[vid(5)] = "stream"  # the stream ended
+        now[0] = youtube.KIND_RECHECK + 1
+        self.assertEqual([v["id"] for v in src()["videos"]], [vid(2), vid(1)])
+        self.assertEqual(pages(), 7)  # only the live and the upcoming one again
+        fresh = youtube.YouTubeSource(youtube.StaticChannels([CH_A]), self.cache, fetch=web, workers=2)
+        self.assertEqual(fresh.kinds[vid(4)], "stream")  # kept on disk
+
+
 class FakeAuth:
     def __init__(self, path):
         self.path = path

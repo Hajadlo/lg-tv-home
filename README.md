@@ -10,7 +10,7 @@ the right app in one press.
 
 - **No computer that stays on? Use the TV-only version.** One app, no server:
   download the `.ipk` from the
-  [latest release](https://github.com/Hajadlo/lg-tv-home/releases/tag/lite-v0.1.0),
+  [latest release](https://github.com/Hajadlo/lg-tv-home/releases/latest),
   install it in Developer Mode and set it up on the TV with the remote.
   Steps: [lite/README.md](lite/README.md).
 - **Have an always-on machine (home server, NAS, Raspberry Pi)? Use the server
@@ -35,7 +35,8 @@ Not sure? See [Three ways to run it](#three-ways-to-run-it) below.
 - **YouTube without ads.** New videos from your subscriptions, played in
   YouTube AdFree (an ad-free YouTube app for webOS). Videos you have already
   watched (on any device) are left out, half-watched ones show a progress bar,
-  and a Continue watching row picks up where you stopped.
+  and a Continue watching row picks up where you stopped. Streams on air get
+  a red LIVE badge; finished streams and scheduled ones are left out.
 - **Steam via Moonlight.** One press wakes your gaming PC, makes sure Sunshine
   is running, and opens Moonlight streaming Steam Big Picture. Recently played
   games are listed with their art.
@@ -61,7 +62,7 @@ caveats and what is still unverified: [docs/editions.md](docs/editions.md).
 
 | | TV only (Developer Mode) | TV + server (this repo) | Rooted TV |
 |---|---|---|---|
-| Status | **Built**: [lite/](lite/README.md), [download](https://github.com/Hajadlo/lg-tv-home/releases/tag/lite-v0.1.0) | **Built** | Design |
+| Status | **Built**: [lite/](lite/README.md), [download](https://github.com/Hajadlo/lg-tv-home/releases/latest) | **Built** | Design |
 | Extra hardware | None | Always-on machine on the LAN | None |
 | Home page, Jellyfin rows, YouTube uploads, Steam recents | Yes | Yes | Yes |
 | Home button and power-on open TV Home | No (open it like an app) | Yes | Yes |

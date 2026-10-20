@@ -18,13 +18,13 @@ You need an LG TV with webOS and a free LG account. Allow about 15 minutes.
    Developer Mode again and switch **Key Server** on; leave the app open, it
    shows the TV's IP address and a passphrase for the next step.
 2. **Install TV Home.** Download `com.tvhome.lite_<version>_all.ipk` from the
-   [latest release](https://github.com/Hajadlo/lg-tv-home/releases/tag/lite-v0.1.0).
+   [latest release](https://github.com/Hajadlo/lg-tv-home/releases/latest).
    The easiest tool is **webOS Dev Manager**
    (<https://github.com/webosbrew/dev-manager-desktop/releases>, Windows,
    macOS, Linux): add the TV (it asks for the IP and passphrase from step 1),
    then open **Apps**, press **Install** and pick the `.ipk`. With LG's command
    line tools instead:
-   `ares-setup-device` once, then `ares-install --device <tv> com.tvhome.lite_0.1.0_all.ipk`.
+   `ares-setup-device` once, then `ares-install --device <tv> com.tvhome.lite_<version>_all.ipk`.
 3. **Open "TV Home"** from the TV's app list. The first time, the Set up
    screen opens by itself.
 4. **Set up.** Fill in what you use and press **Save** (or the red button).
@@ -67,7 +67,7 @@ browser run.
 | Home page: clock, weather, tabs, rows, TV settings shortcuts | Yes |
 | Set up on the TV, first-run prompt | Yes: opens on first start and from the top bar; the TV's keyboard types into the boxes; red button saves |
 | Weather: town search, or a guess from the connection | Yes (Open-Meteo; guess via geojs.io, then ipwho.is) |
-| YouTube: new videos from a channel list, Shorts left out | Yes (public channel feeds; @names resolved from the channel page) |
+| YouTube: new videos from a channel list, Shorts and finished or scheduled streams left out, LIVE badge on streams on air | Yes (public channel feeds; @names resolved from the channel page) |
 | YouTube: follow your subscriptions, hide watched videos, Continue watching | No (needs your YouTube login; the server version does it) |
 | Jellyfin: sign in, Continue watching, Next up, Recently added | Yes (sign-in checked on the TV) |
 | Jellyfin: start the picked episode | Yes, through Jellyfin's remote control, run by the app's service (the Jellyfin app opens and plays it) |

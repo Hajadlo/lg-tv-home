@@ -157,6 +157,14 @@
   var CHANNEL_ID = /^UC[0-9A-Za-z_-]{22}$/;
   var VIDEO_ID = /^[0-9A-Za-z_-]{11}$/;
   var VIDEO_LIMIT = 30, MAX_SHORTS_CHECKS = 40, PER_CHANNEL = 15;
+  /* Live state from the watch page (first pattern found wins): "upcoming" (scheduled
+     stream or premiere), "live" (on air), "stream" (finished stream) or "video".
+     Finished and scheduled streams are left out; live ones get a LIVE badge. */
+  var KIND_PATTERNS = ["\"isUpcoming\":true", "\"isLiveNow\":true", "\"isLiveContent\":true", "\"isLiveContent\":false"];
+  var KIND_OF = { "\"isUpcoming\":true": "upcoming", "\"isLiveNow\":true": "live",
+                  "\"isLiveContent\":true": "stream", "\"isLiveContent\":false": "video" };
+  var FINAL_KINDS = { video: 1, stream: 1 }, HIDDEN_KINDS = { stream: 1, upcoming: 1 };
+  var MAX_KIND_CHECKS = 40, KIND_RECHECK = 10 * 60 * 1000;
 
   /* "@a, @b UCxxxx https://www.youtube.com/@c" -> ["@a", "@b", "UCxxxx", "@c"] (unique). */
   function parseChannels(text) {
@@ -238,16 +246,28 @@
         return null;
       }, function () { return null; });
   }
+  /* The kind of a video (see KIND_PATTERNS), null when the watch page is unclear. */
+  function checkKind(http, vid) {
+    return http({ url: "https://www.youtube.com/watch?v=" + vid, headers: CONSENT, match: KIND_PATTERNS, timeout: 15000 })
+      .then(function (res) {
+        return res.status === 200 && res.match ? KIND_OF[res.match[0]] || null : null;
+      }, function () { return null; });
+  }
   function toVideo(e) {
     return { id: e.id, title: e.title, channel: e.channel, channelId: e.channelId, published: e.published,
-             views: e.views, progress: null, thumb: "https://i.ytimg.com/vi/" + e.id + "/maxresdefault.jpg" };
+             views: e.views, progress: null, live: !!e.live,
+             thumb: "https://i.ytimg.com/vi/" + e.id + "/maxresdefault.jpg" };
   }
-  /* channelIds -> the payload's youtube object. cache: {feeds: {cid: {etag, modified, entries, title}}, shorts: {vid: bool}}
+  /* channelIds -> the payload's youtube object. cache: {feeds: {cid: {etag, modified, entries, title}},
+     shorts: {vid: bool}, kinds: {vid: "video" | "stream"}, passing: {vid: ["live" | "upcoming", checked ms]}}
      is updated in place (the caller stores it). */
   function fetchYouTube(http, channelIds, cache, opts) {
     opts = opts || {};
     cache.feeds = cache.feeds || {};
     cache.shorts = cache.shorts || {};
+    cache.kinds = cache.kinds || {};
+    cache.passing = cache.passing || {};
+    var now = opts.now ? opts.now() : Date.now();
     var limit = opts.limit || VIDEO_LIMIT;
     var ids = channelIds.filter(function (c) { return CHANNEL_ID.test(c); });
     return pool(ids, 4, function (cid) {
@@ -280,7 +300,30 @@
         candidates.push(e);
       });
       // Check unknown candidates for Shorts in batches until the list is full.
-      var picked = [], checks = 0, i = 0;
+      var picked = [], checks = 0, kindChecks = 0, i = 0;
+      function kindsOf(list) {
+        var out = {}, todo = [];
+        list.forEach(function (e) {
+          var passing = cache.passing[e.id];
+          if (cache.kinds[e.id]) out[e.id] = cache.kinds[e.id];
+          else {
+            out[e.id] = passing ? passing[0] : null;  // until checked
+            if (!passing || now - passing[1] >= KIND_RECHECK) todo.push(e);
+          }
+        });
+        todo = todo.slice(0, Math.max(0, MAX_KIND_CHECKS - kindChecks));
+        kindChecks += todo.length;
+        return pool(todo, 4, function (e) { return checkKind(http, e.id); }).then(function (answers) {
+          todo.forEach(function (e, k) {
+            var kind = answers[k];
+            if (!kind || (answers[k] && answers[k].error)) return;
+            out[e.id] = kind;
+            if (FINAL_KINDS[kind]) { cache.kinds[e.id] = kind; delete cache.passing[e.id]; }
+            else cache.passing[e.id] = [kind, now];
+          });
+          return out;
+        });
+      }
       function step() {
         if (i >= candidates.length || picked.length >= limit) return Promise.resolve();
         var batch = candidates.slice(i, i + (limit - picked.length));
@@ -289,12 +332,21 @@
         checks += unknown.length;
         return pool(unknown, 4, function (e) { return checkShort(http, e.id); }).then(function (answers) {
           unknown.forEach(function (e, k) { if (answers[k] === true || answers[k] === false) cache.shorts[e.id] = answers[k]; });
-          batch.forEach(function (e) { if (!cache.shorts[e.id]) picked.push(e); });
-          return step();
+          var normal = batch.filter(function (e) { return !cache.shorts[e.id]; });
+          return kindsOf(normal).then(function (kinds) {
+            normal.forEach(function (e) {
+              if (HIDDEN_KINDS[kinds[e.id]]) return;
+              e.live = kinds[e.id] === "live";
+              picked.push(e);
+            });
+            return step();
+          });
         });
       }
       return step().then(function () {
         Object.keys(cache.shorts).forEach(function (vid) { if (!seen[vid]) delete cache.shorts[vid]; });
+        Object.keys(cache.kinds).forEach(function (vid) { if (!seen[vid]) delete cache.kinds[vid]; });
+        Object.keys(cache.passing).forEach(function (vid) { if (!seen[vid]) delete cache.passing[vid]; });
         return {
           updated: new Date().toISOString(), channelCount: ids.length, auth: "ok", watched: "unavailable",
           videos: picked.slice(0, limit).map(toVideo), "continue": [], failedChannels: failed
@@ -311,7 +363,7 @@
 
   function jfClientAuth(deviceId, token) {
     return "MediaBrowser Client=\"TV Home\", Device=\"LG TV\", DeviceId=\"" + (deviceId || "tvhome-lite") +
-      "\", Version=\"0.1.0\"" + (token ? ", Token=\"" + token + "\"" : "");
+      "\", Version=\"0.1.1\"" + (token ? ", Token=\"" + token + "\"" : "");
   }
   function jfBase(url) {
     url = String(url || "").trim().replace(/\/+$/, "");
