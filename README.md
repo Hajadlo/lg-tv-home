@@ -39,7 +39,24 @@ Taken from a real setup at 1920×1080, the TV's resolution.
 | ![Steam tab](docs/screenshots/steam.jpg) | ![Jellyfin rows: Next up and Recently added](docs/screenshots/jellyfin-rows.jpg) |
 | **Steam:** recently played games; Enter wakes the PC and opens Moonlight | **Jellyfin:** Next up and Recently added |
 
-## What you need
+## Three ways to run it
+
+What TV Home can do depends on what runs it. **Only the server version is
+built today**; the other two are written-up designs. Details, caveats and
+what is still unverified: [docs/editions.md](docs/editions.md).
+
+| | TV only (Developer Mode) | TV + server (this repo) | Rooted TV |
+|---|---|---|---|
+| Status | Design | **Built** | Design |
+| Extra hardware | None | Always-on machine on the LAN | None |
+| Home page, Jellyfin rows, YouTube uploads, Steam recents | Yes | Yes | Yes |
+| Home button and power-on open TV Home | No (open it like an app) | Yes | Yes |
+| YouTube follows your subscriptions automatically | No (fixed channel list) | Yes | No, unless a server is added |
+| YouTube hides watched videos, Continue watching | No | Yes | No, unless a server is added |
+| Steam: wake PC, fix Sunshine, open Big Picture | Wake only | Yes | Wake only |
+| Developer Mode renewal | By hand, about monthly | Automatic | Not needed |
+
+## What you need (TV + server)
 
 - **An always-on Linux machine on the same network as the TV** (a home
   server, NAS or Raspberry Pi-class box with Python 3.11+). It runs the TV Home
