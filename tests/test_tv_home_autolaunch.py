@@ -73,11 +73,11 @@ def test_user_switch_during_settle_is_respected_even_if_they_come_back():
     assert launches(p.tick(105)) == []
 
 
-def test_power_on_with_home_in_front_does_nothing():
+def test_power_on_with_home_in_front_relaunches():
     p = booted(app=HOME_ID)
     p.on_power(STANDBY, 1)
     p.on_power(ON, 100)
-    assert launches(p.tick(105)) == []
+    assert len(launches(p.tick(105))) == 1
 
 
 def test_screen_off_and_back_is_not_a_power_on():
@@ -121,3 +121,16 @@ def test_leaving_home_for_lg_home_opens_bypass_window():
     p.on_app("netflix", 20)
     assert launches(p.on_app(LG_HOME_ID, 60)) == []           # within 120 s
     assert len(launches(p.on_app(YT, 70) + p.on_app(LG_HOME_ID, 200))) == 1  # after it
+
+
+def test_first_connection_after_unreachable_starts_home():
+    p = Policy()
+    p.on_unreachable()
+    p.on_reconnect(ON, LG_HOME_ID, 10)
+    assert len(launches(p.tick(15))) == 1
+
+
+def test_unreachable_after_connected_does_not_mean_power_off():
+    p = booted()
+    assert p.on_unreachable() == []
+    assert p.power == "on"

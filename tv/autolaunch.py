@@ -91,6 +91,12 @@ class Policy:
             out.append({"event": "power-on", "app": self.app})
         return out
 
+    def on_unreachable(self) -> list[dict]:
+        if self.power != "startup":
+            return []
+        self.power = "off"
+        return [{"event": "unreachable-at-start"}]
+
     def on_disconnect(self, now: float) -> list[dict]:
         # A dropped socket alone is not "off": a Wi-Fi blip must not look like
         # a power-on afterwards. on_reconnect decides from the front app.
@@ -145,7 +151,7 @@ class Policy:
         resumed = {self.app_before_off} | PASSIVE_APPS
         chosen = [a for a in self.apps_since_on if a not in resumed]
         if app == HOME_ID:
-            return [{"event": "power-on-skip", "why": "home already in front"}]
+            return [{"event": "power-on-launch", "action": "launch", "app": app}]
         if chosen or app not in resumed:
             return [{"event": "power-on-skip", "why": "user picked an app", "app": app}]
         return [{"event": "power-on-launch", "action": "launch", "app": app}]
@@ -189,6 +195,7 @@ async def run(args) -> None:
                 await client.disconnect()
             except Exception:
                 pass
+            await act(policy.on_unreachable(), None)
             await asyncio.sleep(args.retry_seconds)
             continue
 

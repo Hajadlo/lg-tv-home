@@ -970,6 +970,19 @@
   // A data layer that finished late asks for another look (the TV-only edition).
   window.addEventListener("tvhome-refresh", function () { if (ready && !idle.active) load(); });
   // Back from another app (Jellyfin, YouTube): fresh rows, rebuilt only where they changed.
-  document.addEventListener("visibilitychange", function () { if (!document.hidden && ready) load(); });
+  var shownAt = 0;
+  function onShown() {
+    if (document.hidden || document.webkitHidden || !ready || Date.now() - shownAt < 1000) return;
+    shownAt = Date.now();
+    if (idle.active) idleWake();
+    switchTo(hasDoor("jellyfin") ? "jellyfin" : DOORS[0]);
+    nav.home();
+    idleTouch();
+    load();
+    setTimeout(load, 4000);
+  }
+  document.addEventListener("visibilitychange", onShown);
+  document.addEventListener("webkitvisibilitychange", onShown);
+  document.addEventListener("webOSRelaunch", function () { setTimeout(onShown, 0); });
   if (params.get("idle") === "1") setTimeout(idleEnter, 1500);
 })();

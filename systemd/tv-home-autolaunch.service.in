@@ -9,7 +9,7 @@ Wants=network-online.target
 Type=simple
 Environment=PATH=@PATH@
 WorkingDirectory=%h
-ExecStart=@UV@ run -q --no-project --with aiowebostv python -I @ROOT@/tv/autolaunch.py --settle-seconds 1
+ExecStart=@UV@ run -q --no-project --with aiowebostv python -I @ROOT@/tv/autolaunch.py --settle-seconds 1 --retry-seconds 1
 Restart=always
 RestartSec=10
 UMask=0077

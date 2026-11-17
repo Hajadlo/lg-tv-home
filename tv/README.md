@@ -106,3 +106,22 @@ ares-install --device tv --remove <app_id>
 
 Close the app first (`ares-launch --device tv -c <app_id>`) or launch params
 arrive as a relaunch.
+
+## YouTube preloaded startup recovery
+
+YouTube AdFree 0.5.3 can occasionally open its home screen on a cold start
+instead of the requested video. `youtube-startup-recovery.js` is a recovery
+script for that specific version: after five seconds it checks the preloaded
+launch target and redirects only if the requested video is missing. The
+script has a loop guard. It must be prepended to YouTube AdFree's own
+`webOSUserScripts/userScript.js` in a repackaged installation; it is not
+installed by TV Home's installer. Back up the original app and settings first,
+verify the app version, and reinstall the patched package using the webOS SDK.
+Reinstalling or updating YouTube AdFree removes the patch. This workaround was
+verified on one TV but the race is intermittent.
+
+TV Home's hosted UI starts on Jellyfin when enabled (otherwise the first
+configured section), and returns there on relaunch. The watcher retries a
+lost connection every second in the supplied systemd unit. After updating an
+existing installation, reinstall its generated unit and run systemd's
+`daemon-reload` and restart the watcher.
