@@ -30,6 +30,7 @@ import jf_remote
 import notify
 import pc as pc_mod
 import steam
+import twitch
 import tvconfig
 import weather
 import youtube
@@ -109,13 +110,17 @@ class App:
                  hdd=hdd_space, jellyfin_every=JELLYFIN_EVERY, weather_every=WEATHER_EVERY,
                  youtube_source: youtube.YouTubeSource | None = None, steam_source: steam.SteamSource | None = None,
                  web_images: images.UrlImageCache | None = None, logo_cache: Path | None = None,
-                 jellyfin_client=None, features: dict[str, bool] | None = None, bridge_js: bytes | None = None):
+                 jellyfin_client=None, features: dict[str, bool] | None = None, bridge_js: bytes | None = None,
+                 twitch_source: twitch.TwitchSource | None = None, game_shortcuts: list | None = None):
         self.ui_dir = ui_dir.resolve()
         self.bridge_js = bridge_js  # tv/app/bridge.js filled from config.toml, served at /tv/bridge.js
         self.features = dict(features or ALL_FEATURES)
         self.started = time.time()
         self.jellyfin = Refresher("jellyfin", jellyfin_rows, jellyfin_every, retry=20)
         self.weather = Refresher("weather", weather_fetch, weather_every, retry=120)
+        self.game_shortcuts = game_shortcuts or []
+        self.twitch_source = twitch_source
+        self.twitch = Refresher("twitch", twitch_source or (lambda: None), 60, retry=60)
         self.youtube_source = youtube_source
         self.steam_source = steam_source
         self.youtube = Refresher("youtube", youtube_source or (lambda: None), YOUTUBE_EVERY, retry=300)
@@ -137,6 +142,8 @@ class App:
             self.weather.start()
         if self.features["steam"]:
             self._pc_stop = self.pc.start_monitor()
+        if self.twitch_source is not None:
+            self.twitch.start()
         if self.youtube_source is not None:
             self.youtube.start()
         if self.steam_source is not None:
@@ -151,6 +158,8 @@ class App:
             self.youtube.poke(5)  # youtube-auth just stored a token
         if f["steam"] and self.steam_source is not None and self.steam_source.due():
             self.steam.poke(60)  # the PC came on
+        if self.twitch_source is not None:
+            self.twitch.poke(30)
         return {
             "now": datetime.now().astimezone().isoformat(timespec="seconds"),
             # Which tabs the UI builds; a source that is off is also null below.
@@ -160,7 +169,9 @@ class App:
             "pc": self.pc.home_status() if f["steam"] else None,
             "system": self.hdd(),
             "youtube": self.youtube.get() if f["youtube"] else None,
-            "steam": self._with_logos(self.steam.get(), ("recent",)) if f["steam"] else None,
+            "twitch": self.twitch.get() if f.get("twitch") else None,
+            "steam": self._with_logos(self.steam.get(), ("recent", "library")) if f["steam"] else None,
+            "gameShortcuts": self.game_shortcuts if f["steam"] else [],
         }
 
     def _with_logos(self, block: dict | None, keys: tuple[str, ...]) -> dict | None:
@@ -247,6 +258,7 @@ class App:
             "jellyfin": jf,
             "weather": wx,
             "youtube": yt,
+            "twitch": {**self.twitch.status(), "cookies": self.twitch_source.store.status() if self.twitch_source else None},
             "steam": {**self.steam.status(), "lastDesktopRead": None if self.steam_source is None
                       or self.steam_source.last_read is None
                       else round(time.time() - self.steam_source.last_read)},
@@ -456,6 +468,14 @@ def build_app(cfg: dict, ui_dir: Path, yt_channels: list[str] | None = None, yt_
                                              cookie_channels=watched.channels if watched else None)
         youtube_source = youtube.YouTubeSource(channels, CACHE_DIR, watched=watched)
 
+    twitch_source = None
+    if features.get("twitch"):
+        tw_cfg = cfg["twitch"]
+        store = yt_cookies.CookieStore(CONFIG_DIR / "twitch-cookies.json", lambda: yt_cookie_sync,
+                                       yt_cookies.tar_reader(tw_cfg["browser_profile"], tw_cfg["ssh_host"]),
+                                       hosts=yt_cookies.TWITCH_HOSTS, login=yt_cookies.has_twitch_login)
+        twitch_source = twitch.TwitchSource(store)
+
     steam_source = None
     if features["steam"] and st_cfg["ssh_host"]:
         read = steam.ssh_reader(st_cfg["ssh_host"])
@@ -480,6 +500,10 @@ def build_app(cfg: dict, ui_dir: Path, yt_channels: list[str] | None = None, yt_
         pc=pc,
         image_cache=images.ImageCache(CACHE_DIR / "img", source.image if features["jellyfin"] else None),
         youtube_source=youtube_source,
+        twitch_source=twitch_source,
+        game_shortcuts=[{"name": str(x["name"]), "appId": int(x["app_id"]), "art": str(x.get("art", ""))}
+                        for x in st_cfg.get("shortcuts", []) if isinstance(x, dict) and x.get("name")
+                        and str(x.get("app_id", "")).isdigit() and int(x["app_id"]) > 0],
         steam_source=steam_source,
         web_images=images.UrlImageCache(CACHE_DIR / "web"),
         logo_cache=CACHE_DIR / "logo-info.json",

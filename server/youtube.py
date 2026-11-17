@@ -44,6 +44,7 @@ MAX_CATEGORY_CHECKS = 25  # per refresh; answers are cached forever
 LIVE_NOW_RE = re.compile(rb'"isLiveNow":(true|false)')
 LIVE_CONTENT_RE = re.compile(rb'"isLiveContent":(true|false)')
 UPCOMING_RE = re.compile(rb'"isUpcoming":true')
+LENGTH_RE = re.compile(rb'"lengthSeconds":"(\d{1,7})"')  # "0" while live
 FINAL_KINDS = ("video", "stream")  # cached forever; "live" and "upcoming" change
 KIND_RECHECK = 10 * 60.0
 MAX_KIND_CHECKS = 40  # watch pages per refresh; unchecked videos show as normal ones
@@ -104,7 +105,8 @@ def check_short(video_id: str, fetch: net.Fetch = net.request) -> bool | None:
 
 
 def parse_watch(body: bytes) -> dict:
-    """Category ("Music", "Gaming", ...) and kind (see LIVE_NOW_RE) of a watch page; None where unclear."""
+    """Category ("Music", "Gaming", ...), kind (see LIVE_NOW_RE) and length in seconds of a watch
+    page; None where unclear."""
     m = CATEGORY_RE.search(body)
     category = m.group(1).decode("utf-8", "replace").replace("\\u0026", "&") if m else None
     content = LIVE_CONTENT_RE.search(body)
@@ -117,19 +119,14 @@ def parse_watch(body: bytes) -> dict:
         kind = "stream" if content.group(1) == b"true" else "video"
     else:
         kind = None
-    return {"category": category, "kind": kind}
+    length = LENGTH_RE.search(body)
+    return {"category": category, "kind": kind, "length": int(length.group(1)) or None if length else None}
 
 
 def watch_info(video_id: str, fetch: net.Fetch = net.request) -> dict | None:
     """parse_watch of the public watch page; None when YouTube does not answer 200."""
     resp = fetch(WATCH_URL.format(video_id), headers={**CONSENT, "Accept-Language": "en"}, timeout=15)
     return parse_watch(resp.body) if resp.status == 200 else None
-
-
-def video_category(video_id: str, fetch: net.Fetch = net.request) -> str | None:
-    """YouTube's category ("Music", "Gaming", ...) from the public watch page; None when unclear."""
-    info = watch_info(video_id, fetch)
-    return info["category"] if info else None
 
 
 def thumb_ok(data: bytes) -> bool:
@@ -294,6 +291,8 @@ class YouTubeSource:
         self.categories: dict[str, str] = net.read_json(self.categories_path, {}) or {}
         self.kinds_path = cache_dir / "yt-kinds.json"
         self.kinds: dict[str, str] = net.read_json(self.kinds_path, {}) or {}  # final kinds only
+        self.lengths_path = cache_dir / "yt-lengths.json"
+        self.lengths: dict[str, int] = net.read_json(self.lengths_path, {}) or {}  # id -> seconds, 0: page has none
         self._passing: dict[str, tuple[str, float]] = {}  # id -> ("live" | "upcoming", checked at)
         self._clock = time.monotonic
         self._feeds: dict[str, dict] = {}  # channel id -> {"etag", "modified", "entries"}
@@ -348,22 +347,34 @@ class YouTubeSource:
         # A video in "Continue watching" is not repeated among the new ones.
         hidden = (state.hidden() if state else set()) | {v["id"] for v in unfinished}
         videos = self.pick(entries, state.progress if state else {}, hidden)
+        for v in videos + unfinished:
+            v["duration"] = None if v["live"] else self.lengths.get(v["id"]) or None
+        self.lengths = {k: n for k, n in self.lengths.items()
+                        if k in self.kinds or k in self.categories or k in self._passing}
+        try:
+            net.write_json(self.lengths_path, self.lengths)
+        except OSError as exc:
+            log.warning("cannot save the video lengths: %s", exc)
         return {"updated": datetime.now().astimezone().isoformat(timespec="seconds"),
                 "channelCount": len(ids), "auth": auth, "watched": "ok" if state else "unavailable",
                 "videos": videos, "continue": unfinished}
 
     def drop_music(self, videos: list[dict], limit: int = yt_watched.CONTINUE_LIMIT) -> list[dict]:
-        """Keep non-music videos, up to `limit`; categories come from a cache, else the watch page."""
+        """Keep non-music videos, up to `limit`; categories (and lengths) come from a cache, else the watch page."""
         out, checks, changed = [], 0, False
         for v in videos:
             cat = self.categories.get(v["id"])
-            if cat is None and checks < MAX_CATEGORY_CHECKS:
+            if (cat is None or v["id"] not in self.lengths) and checks < MAX_CATEGORY_CHECKS:
                 checks += 1
                 try:
-                    cat = video_category(v["id"], self._fetch)
+                    info = watch_info(v["id"], self._fetch) or {}
                 except OSError as exc:
                     log.warning("category of %s: %s", v["id"], exc)
-                if cat:
+                    info = {}
+                if info:
+                    self.lengths[v["id"]] = info.get("length") or 0
+                if cat is None and info.get("category"):
+                    cat = info["category"]
                     self.categories[v["id"]] = cat
                     changed = True
             if cat is None or cat == "Music":
@@ -448,6 +459,8 @@ class YouTubeSource:
             passing = self._passing.get(vid)
             if vid in self.kinds:
                 out[vid] = self.kinds[vid]
+                if self.kinds[vid] == "video" and vid not in self.lengths:
+                    todo.append(vid)  # checked before lengths were kept
             elif passing and now - passing[1] < KIND_RECHECK:
                 out[vid] = passing[0]
             else:
@@ -463,6 +476,8 @@ class YouTubeSource:
                     continue
                 kind = info["kind"]
                 out[vid] = kind
+                if kind in FINAL_KINDS:
+                    self.lengths[vid] = info.get("length") or 0
                 if kind in FINAL_KINDS:
                     self.kinds[vid] = kind
                     self._passing.pop(vid, None)

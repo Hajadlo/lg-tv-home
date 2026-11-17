@@ -1,0 +1,161 @@
+{
+ "contents": {
+  "twoColumnBrowseResultsRenderer": {
+   "tabs": [
+    {
+     "tabRenderer": {
+      "content": {
+       "richGridRenderer": {
+        "contents": [
+         {
+          "richItemRenderer": {
+           "content": {
+            "lockupViewModel": {
+             "contentId": "PLFAKE0000000000000001",
+             "contentType": "LOCKUP_CONTENT_TYPE_PLAYLIST",
+             "metadata": {
+              "lockupMetadataViewModel": {
+               "title": {
+                "content": "Fake list"
+               },
+               "metadata": {
+                "contentMetadataViewModel": {
+                 "metadataRows": [
+                  {
+                   "metadataParts": [
+                    {
+                     "text": {
+                      "content": "Unlisted"
+                     }
+                    },
+                    {
+                     "text": {
+                      "content": "Playlist"
+                     }
+                    },
+                    {
+                     "text": {
+                      "content": "Updated yesterday"
+                     }
+                    }
+                   ]
+                  },
+                  {
+                   "metadataParts": [
+                    {
+                     "text": {
+                      "content": "View full playlist"
+                     }
+                    }
+                   ]
+                  }
+                 ]
+                }
+               }
+              }
+             }
+            }
+           }
+          }
+         },
+         {
+          "richItemRenderer": {
+           "content": {
+            "lockupViewModel": {
+             "contentId": "LL",
+             "contentType": "LOCKUP_CONTENT_TYPE_PLAYLIST",
+             "metadata": {
+              "lockupMetadataViewModel": {
+               "title": {
+                "content": "Liked videos"
+               },
+               "metadata": {
+                "contentMetadataViewModel": {
+                 "metadataRows": [
+                  {
+                   "metadataParts": [
+                    {
+                     "text": {
+                      "content": "Private"
+                     }
+                    },
+                    {
+                     "text": {
+                      "content": "Playlist"
+                     }
+                    }
+                   ]
+                  },
+                  {
+                   "metadataParts": [
+                    {
+                     "text": {
+                      "content": "View full playlist"
+                     }
+                    }
+                   ]
+                  }
+                 ]
+                }
+               }
+              }
+             }
+            }
+           }
+          }
+         },
+         {
+          "richItemRenderer": {
+           "content": {
+            "lockupViewModel": {
+             "contentId": "PLOTHER000000000000002",
+             "contentType": "LOCKUP_CONTENT_TYPE_PLAYLIST",
+             "metadata": {
+              "lockupMetadataViewModel": {
+               "title": {
+                "content": "Someone's list"
+               },
+               "metadata": {
+                "contentMetadataViewModel": {
+                 "metadataRows": [
+                  {
+                   "metadataParts": [
+                    {
+                     "text": {
+                      "content": "Someone"
+                     }
+                    },
+                    {
+                     "text": {
+                      "content": "Playlist"
+                     }
+                    }
+                   ]
+                  },
+                  {
+                   "metadataParts": [
+                    {
+                     "text": {
+                      "content": "View full playlist"
+                     }
+                    }
+                   ]
+                  }
+                 ]
+                }
+               }
+              }
+             }
+            }
+           }
+          }
+         }
+        ]
+       }
+      }
+     }
+    }
+   ]
+  }
+ }
+}

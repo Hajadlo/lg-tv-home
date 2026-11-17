@@ -22,8 +22,8 @@
   var RETRY_MS = 30 * 1000;
   var QUIET_MS = 900;          /* rebuilds wait until no key came for this long */
   var FADE_MS = 220, SLIDE_MS = 250, SLIDE_PX = 22, EASE = "cubic-bezier(0.2, 0.7, 0.2, 1)";
-  var DOORS = ["jellyfin", "youtube", "pc"];   // narrowed by applyFeatures
-  var FEATURE = { jellyfin: "jellyfin", youtube: "youtube", pc: "steam" };
+  var DOORS = ["jellyfin", "youtube", "twitch", "pc"];   // narrowed by applyFeatures
+  var FEATURE = { jellyfin: "jellyfin", youtube: "youtube", twitch: "twitch", pc: "steam" };
 
   var $ = function (id) { return document.getElementById(id); };
   var body = document.body;
@@ -89,6 +89,19 @@
     if (d < 365) return Math.max(1, Math.round(d / 30.4)) + " mo ago";
     return Math.floor(d / 365) + " y ago";
   }
+  /* A video's length as YouTube writes it: "4:07", "1:02:45". */
+  function clockLength(sec) {
+    if (typeof sec !== "number" || !(sec > 0)) return "";
+    var hr = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60), s = Math.floor(sec % 60);
+    return (hr ? hr + ":" + pad(m) : m) + ":" + pad(s);
+  }
+  /* How long a stream has been on air: "45 min", "2 h 15 min". */
+  function uptime(iso) {
+    var t = Date.parse(iso || "");
+    if (isNaN(t)) return "";
+    var m = Math.max(1, Math.floor((Date.now() - t) / 60000));
+    return m < 60 ? m + " min" : Math.floor(m / 60) + " h" + (m % 60 ? " " + (m % 60) + " min" : "");
+  }
   function played(hours) {
     if (typeof hours !== "number" || hours <= 0) return "";
     if (hours < 1) return Math.round(hours * 60) + " min played";
@@ -109,7 +122,7 @@
   }
   /* Ages ("3 h ago") are written by setText from {age, ts, prefix} and kept
      current by refreshAges, since rooms are no longer rebuilt on every visit. */
-  var AGE = { ago: ago, since: since };
+  var AGE = { ago: ago, since: since, uptime: uptime };
   function ageText(el) {
     var t = AGE[el.dataset.age](el.dataset.ts);
     return t ? (el.dataset.prefix || "") + t : "";
@@ -138,6 +151,7 @@
     var now = new Date();
     setIfChanged($("clock"), pad(now.getHours()) + ":" + pad(now.getMinutes()));
     setIfChanged($("date"), dateFmt.format(now));
+    if (ready && !pageHidden()) refreshAges(stages[selected]);
     setTimeout(tickClock, 60000 - (now.getSeconds() * 1000 + now.getMilliseconds()) + 50);
   }
 
@@ -376,7 +390,8 @@
   }
   function ytTile(v) {
     var frame = h("span", { class: "tile-img" }, [v.thumb ? ytThumb(v, W.tile) : null, progressBar(v.progress),
-      v.live ? h("span", { class: "tile-live", text: "LIVE" }) : null]);
+      v.live ? h("span", { class: "tile-live", text: "LIVE" }) : null,
+      !v.live && v.duration ? h("span", { class: "tile-duration", text: clockLength(v.duration) }) : null]);
     var tile = tileButton("yt:" + v.id, frame, v.title, v.channel,
       v.live ? "live now" : (v.published ? { age: "since", ts: v.published } : null));
     if (v.live) tile.classList.add("live");
@@ -401,7 +416,7 @@
     hero.appendChild(heroButton({
       launch: "yt:" + top.id, title: top.title, long: (top.title || "").length > 24,
       sub: top.channel, verb: top.live ? "Watch live" : (top.progress > 0 ? "Continue" : "Play"),
-      meta: !top.live && ago(top.published) ? { age: "ago", ts: top.published } : "",
+      meta: !top.live && ago(top.published) ? { age: "ago", ts: top.published, suffix: top.duration ? " · " + clockLength(top.duration) : "" } : (!top.live && top.duration ? clockLength(top.duration) : ""),
       progress: top.progress
     }));
     // One row of the newest, then what was left unfinished, then the rest.
@@ -412,6 +427,58 @@
     addGrid(rows, "Earlier", rest.slice(5).map(ytTile), "video");
     var u = api.img(top.thumb, W.ytBackdrop);
     return { backdrop: [u, u && u.indexOf("maxresdefault") >= 0 ? u.replace("maxresdefault", "hqdefault") : null], backdrops: [] };
+  }
+
+  /* ---------- Twitch room ---------- */
+  function viewers(n) {
+    if (typeof n !== "number") return "";
+    if (n < 1000) return n + " watching";
+    return (n < 10000 ? (Math.round(n / 100) / 10) : Math.round(n / 1000)) + "k watching";
+  }
+  function twLive(s) {
+    var frame = h("span", { class: "tile-img" }, [s.thumb ? lazyImg(s.thumb) : null,
+      h("span", { class: "tile-live", text: "LIVE" }),
+      s.started ? h("span", { class: "tile-duration", text: { age: "uptime", ts: s.started } }) : null]);
+    var tile = tileButton("tw:" + s.login, frame, s.title || s.name,
+      s.name + (s.game ? " · " + s.game : ""), viewers(s.viewers).replace(" watching", ""));
+    tile.classList.add("live");
+    return tile;
+  }
+  function twChannel(c) {
+    var frame = h("span", { class: "tile-img tile-avatar" }, [c.avatar ? lazyImg(c.avatar) : null]);
+    return tileButton("tw:" + c.login, frame, c.name, c.game || "", c.lastLive ? { age: "since", ts: c.lastLive } : null);
+  }
+  function renderTwitch(hero, rows, d) {
+    if (down) {
+      heroEmpty(hero, DOWN_HEAD, "Twitch still opens on its own.");
+      return { backdrops: [] };
+    }
+    var tw = d && d.twitch;
+    if (!tw) {
+      heroEmpty(hero, "Loading Twitch", "The channels you follow will appear when they've loaded. Twitch itself opens as usual.");
+      return { backdrops: [] };
+    }
+    if (tw.auth === "missing" || tw.auth === "expired") {
+      heroEmpty(hero, tw.auth === "missing" ? "No Twitch login" : "Twitch sign-in expired",
+        "Sign in to twitch.tv in the configured browser and your channels show up here. Twitch itself opens as usual.");
+      return { backdrops: [] };
+    }
+    var live = (tw.live || []).filter(function (s) { return s && s.login; });
+    var recent = (tw.recent || []).filter(function (c) { return c && c.login; });
+    if (!live.length) {
+      heroEmpty(hero, "Nobody's live", "None of the channels you follow is streaming right now.");
+      addGrid(rows, "Live lately", recent.map(twChannel), "video");
+      return { backdrops: [] };
+    }
+    var top = live[0], facts = [top.game, viewers(top.viewers)].filter(Boolean);
+    hero.appendChild(heroButton({
+      launch: "tw:" + top.login, title: top.name, sub: top.title,
+      verb: "Watch live",
+      meta: top.started ? { age: "uptime", ts: top.started, prefix: facts.concat("live for ").join(", ") } : facts.join(", ")
+    }));
+    addGrid(rows, "Live now", live.slice(1).map(twLive), "video");
+    addGrid(rows, "Live lately", recent.map(twChannel), "video");
+    return { backdrop: [top.backdrop], backdrops: live.map(function (s) { return { url: s.backdrop }; }) };
   }
 
   /* ---------- Steam room ---------- */
@@ -433,6 +500,13 @@
       return { backdrops: [] };
     }
     var st = d && d.steam;
+    var shortcuts = (d && d.gameShortcuts || []).filter(function (x) { return x && x.name && x.appId; });
+    if (shortcuts.length) {
+      addGrid(rows, "Your games", shortcuts.map(function (x) {
+        var frame = h("span", { class: "tile-img" }, [x.art ? lazyImg(x.art) : h("span", { class: "tile-name", text: x.name })]);
+        return tileButton("pc:" + x.appId, frame, x.name, "Stream with Moonlight");
+      }), "video");
+    }
     if (roomNotice(hero, st)) return { backdrops: [] };
     var games = st ? (st.recent || []).filter(function (g) { return g && g.appid; }).slice(0, MAX_TILES) : [];
     if (!games.length) {
@@ -446,7 +520,8 @@
       sub: ago(top.lastPlayed) ? { age: "ago", ts: top.lastPlayed, prefix: "Last played " } : "",
       verb: "Open Steam", meta: played(top.playtimeH)
     }));
-    addGrid(rows, "Recently played", games.slice(1).map(gameTile), "portrait");
+    var library = st && st.library || games;
+    addGrid(rows, "Steam library", library.map(gameTile), "portrait");
     var pool = games.map(function (g) {
       var u = api.img(g.hero, W.wide);
       return u ? { url: u, wide: true } : null;
@@ -454,9 +529,9 @@
     return { backdrop: [api.img(top.hero, W.wide), api.img(top.header, W.wide)], wide: true, backdrops: pool };
   }
 
-  var ROOMS = { jellyfin: renderJellyfin, youtube: renderYouTube, pc: renderSteam };
+  var ROOMS = { jellyfin: renderJellyfin, youtube: renderYouTube, twitch: renderTwitch, pc: renderSteam };
   function roomData(name, d) {
-    return d && (name === "jellyfin" ? d.jellyfin : name === "youtube" ? d.youtube : d.steam);
+    return d && (name === "jellyfin" ? d.jellyfin : name === "youtube" ? d.youtube : name === "twitch" ? d.twitch : {steam: d.steam, shortcuts: d.gameShortcuts});
   }
 
   /* ---------- building rooms (only when their data changed, only when quiet) ---------- */
@@ -577,7 +652,7 @@
     var busy = selected === "pc" && (pcDoor.classList.contains("waking") || pcDoor.classList.contains("ready"));
     line.classList.toggle("hidden", busy);
   }
-  var jfNote = $("jf-note"), ytNoteEl = $("yt-note");   // kept: a removed door's note is detached, not gone
+  var jfNote = $("jf-note"), ytNoteEl = $("yt-note"), twNoteEl = $("tw-note");   // kept: a removed door's note is detached, not gone
   function renderDoors(d) {
     var before = jfNote.textContent + "|" + ytNoteEl.textContent + "|" + pcNote.textContent;
     var jfn = d && d.jellyfin && d.jellyfin.notice;
@@ -594,6 +669,8 @@
       }
     }
     setIfChanged(ytNoteEl, ytNote);
+    var tw = d && d.twitch;
+    setIfChanged(twNoteEl, tw && tw.auth === "ok" && tw.live && tw.live.length ? tw.live.length + " live" : tw && tw.auth === "expired" ? "Sign-in expired" : "");
     if (!pc.busy) setPcNote(d && d.pc ? d.pc : null);
     // A note wider than its word moves the doors after it: measure again (when quiet).
     if (before !== jfNote.textContent + "|" + ytNoteEl.textContent + "|" + pcNote.textContent) doorsDirty = true;
@@ -604,7 +681,7 @@
   function hasDoor(name) { return DOORS.indexOf(name) >= 0; }
   function applyFeatures(f) {
     if (!f) return;
-    var keep = ["jellyfin", "youtube", "pc"].filter(function (n) { return f[FEATURE[n]] !== false; });
+    var keep = ["jellyfin", "youtube", "twitch", "pc"].filter(function (n) { return n === "twitch" ? f.twitch === true : f[FEATURE[n]] !== false; });
     if (!keep.length) return;   // nothing configured: keep every door, each says what is missing
     var key = keep.join(",");
     if (key === featuresKey) return;
@@ -730,6 +807,7 @@
     if (!el) return;
     if (el.dataset.app === "jellyfin") return go("jellyfin", {}, "Jellyfin");
     if (el.dataset.app === "youtube") return go("youtube", {}, "YouTube");
+    if (el.dataset.app === "twitch") return go("twitch", {}, "Twitch");
     if (el.dataset.app === "pc") return playOnPc();
     if (el.dataset.settings) return openSettings(el.dataset.settings);
     if (el.hasAttribute("data-lg")) return lgHome();
@@ -743,6 +821,11 @@
       return go("jellyfin", { jellyfinItemId: launch.slice(3) }, "Jellyfin");
     }
     if (launch.indexOf("yt:") === 0) return go("youtube", { videoId: launch.slice(3) }, "YouTube");
+    if (launch.indexOf("tw:") === 0) return go("twitch", { channel: launch.slice(3) }, "Twitch");
+    if (launch.indexOf("pc:") === 0) {
+      var appId = Number(launch.slice(3));
+      if (appId > 0) return playOnPc(appId);
+    }
     if (launch === "game") {
       // Same flow as the Steam door; bring the hero back so its state is in view.
       if (nav.section() && nav.section().kind === "row") nav.focusSection("hero", 0);
@@ -810,8 +893,9 @@
     pcNote.textContent = text;
     pcMirror(text, false);
   }
-  function playOnPc() {
+  function playOnPc(appId) {
     if (pc.busy) return;
+    pc.targetAppId = appId || null;
     pc.busy = true;
     pcPhase("waking", "Waking the desktop, this can take a minute");
     api.play().then(function (r) {
@@ -834,9 +918,9 @@
   }
   function pcReady() {
     clearTimeout(pc.timer);
-    pcPhase("ready", "Ready, opening Steam");
+    pcPhase("ready", pc.targetAppId ? "Ready, opening game" : "Ready, opening Steam");
     setTimeout(function () {
-      go("moonlight", {}, "Steam");
+      go("moonlight", pc.targetAppId ? { appId: pc.targetAppId } : {}, pc.targetAppId ? "game" : "Steam");
       pc.busy = false;
       setTimeout(function () { pcPhase(null, ""); setPcNote({ state: "on", sunshine: "listening" }); }, 3000);
     }, 700);
@@ -849,6 +933,7 @@
     idle.timer = setTimeout(idleEnter, IDLE_AFTER);
   }
   function idleEnter() {
+    if (pageHidden()) return;
     if (idle.active || pc.busy) { idleTouch(); return; }
     idle.active = true;
     nav.home();
@@ -902,6 +987,7 @@
   /* pixel shift against burn-in: a few px every two minutes */
   var shift = 0;
   setInterval(function () {
+    if (pageHidden()) return;
     shift = (shift + 1) % 9;
     var dx = (shift % 3) - 1, dy = Math.floor(shift / 3) - 1;
     $("ui").style.transform = "translate(" + dx * 2 + "px, " + dy * 2 + "px)";
@@ -966,13 +1052,14 @@
   nav.setScope(stages[selected]);
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { doorsDirty = true; flush(); });
   load();
-  setInterval(function () { if (!idle.active && !pc.busy) load(); }, REFRESH_MS);
+  setInterval(function () { if (!pageHidden() && !idle.active && !pc.busy) load(); }, REFRESH_MS);
   // A data layer that finished late asks for another look (the TV-only edition).
   window.addEventListener("tvhome-refresh", function () { if (ready && !idle.active) load(); });
   // Back from another app (Jellyfin, YouTube): fresh rows, rebuilt only where they changed.
+  function pageHidden() { return !!(document.hidden || document.webkitHidden); }
   var shownAt = 0;
   function onShown() {
-    if (document.hidden || document.webkitHidden || !ready || Date.now() - shownAt < 1000) return;
+    if (pageHidden() || !ready || Date.now() - shownAt < 1000) return;
     shownAt = Date.now();
     if (idle.active) idleWake();
     switchTo(hasDoor("jellyfin") ? "jellyfin" : DOORS[0]);
@@ -981,8 +1068,12 @@
     load();
     setTimeout(load, 4000);
   }
-  document.addEventListener("visibilitychange", onShown);
-  document.addEventListener("webkitvisibilitychange", onShown);
+  function onVisibility() {
+    if (pageHidden()) { clearTimeout(idle.timer); }
+    else onShown();
+  }
+  document.addEventListener("visibilitychange", onVisibility);
+  document.addEventListener("webkitvisibilitychange", onVisibility);
   document.addEventListener("webOSRelaunch", function () { setTimeout(onShown, 0); });
   if (params.get("idle") === "1") setTimeout(idleEnter, 1500);
 })();

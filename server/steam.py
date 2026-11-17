@@ -157,7 +157,7 @@ def iso_local(epoch: int) -> str:
 
 def to_game(appid: int, name: str, last: int, minutes: int | None) -> dict:
     base = f"/api/steam/{appid}"
-    return {"appid": appid, "name": name, "lastPlayed": iso_local(last),
+    return {"appid": appid, "name": name, "lastPlayed": iso_local(last) if last > 0 else None,
             "playtimeH": None if minutes is None else round(minutes / 60, 1),
             "cover": f"{base}/cover", "hero": f"{base}/hero", "logo": f"{base}/logo", "header": f"{base}/header"}
 
@@ -263,18 +263,21 @@ class SteamSource:
         if self._read is None or not self.desktop_on():
             return self.last
         localconfig, manifests = self._read()
-        games = self.build(played_apps(localconfig, manifests))
-        self.last = {"updated": datetime.now().astimezone().isoformat(timespec="seconds"), "recent": games}
+        apps = played_apps(localconfig, manifests)
+        installed = played_apps({}, manifests)
+        games = self.build(apps)
+        library = self.build({appid: info for appid, info in apps.items() if appid in installed}, all_games=True)
+        self.last = {"updated": datetime.now().astimezone().isoformat(timespec="seconds"), "recent": games, "library": library}
         self.last_read = self._clock()
         net.write_json(self.state_path, self.last)
         return self.last
 
-    def build(self, apps: dict[int, dict]) -> list[dict]:
+    def build(self, apps: dict[int, dict], *, all_games: bool = False) -> list[dict]:
         games = []
         for appid, info in sorted(apps.items(), key=lambda kv: kv[1]["lastPlayed"], reverse=True):
-            if len(games) >= self.limit:
+            if not all_games and len(games) >= self.limit:
                 break
-            if info["lastPlayed"] <= 0 or is_tool(appid, info["name"]):
+            if (not all_games and info["lastPlayed"] <= 0) or is_tool(appid, info["name"]):
                 continue
             store = self.names.get(appid, lookup=not info["name"]) or {}
             name = info["name"] or store.get("name")

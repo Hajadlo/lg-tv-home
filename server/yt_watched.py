@@ -1,18 +1,22 @@
-"""Watched state and channel list from a browser's YouTube login (cookies + InnerTube).
+"""Watched state and channel list from the browser's YouTube login (cookies + InnerTube).
 
 `CookieYouTube` owns the cookie copy (yt_cookies.CookieStore) and a read-only
-InnerTube session acting as the channel `channel_name` (`[youtube] channel` in
-config.toml: a channel name or @handle, found in the channel switcher of each
-signed-in Google account). It answers:
+InnerTube session acting as the channel `channel_name` (`channel_name`;
+found in the channel switcher of each signed-in Google account). It answers:
 
 - `watch_state()`: per video id the red-bar progress from the subscriptions
   feed (FEsubscriptions, first page) and recent history (FEhistory, first page,
   about a week), at most every 30 min; `None` while unavailable.
 - `channels()`: the subscribed channels (FEchannels), for youtube.Subscriptions.
 
+The browser replaces Google's session cookies as it browses, so a copy here goes stale
+within the hour. When YouTube rejects the copy, a fresh one is taken (browser machine
+on) and the request retried once. A rejected copy that cannot be replaced
+(browser machine unavailable) is handled like a transient failure below, but never sends an ntfy.
+
 On failure the last good watch state is used for up to `grace` seconds; after
-that (or at once when the login itself is gone) the state is "unavailable" and
-one ntfy goes out, re-armed by the next success.
+that (or at once when a fresh copy's login is gone) the state is "unavailable"
+and one ntfy goes out. A success re-arms it once the last ntfy is `rearm` s old.
 """
 
 from __future__ import annotations
@@ -35,18 +39,19 @@ log = logging.getLogger("tvhome.ytwatched")
 WATCH_EVERY = 30 * 60.0  # never more often than this
 IDENTITY_EVERY = 24 * 3600.0
 GRACE = 2 * 3600.0  # a transient failure keeps the last watch state this long
+REARM = 24 * 3600.0  # at most one ntfy a day, however often the login flaps
 WATCHED_AT = 0.9  # hide at 90 % watched or more
 CONTINUE_FROM = 0.11  # past YouTube's 10 % minimum bar: anything less was a glance or a song
 CONTINUE_LIMIT = 5  # one grid row
 MAX_AUTH_USERS = 5
 MAX_CHANNEL_PAGES = 20
 
-FIX = ("Open youtube.com once in the browser TV Home copies its login from, signed in with the {name} "
-       "channel; TV Home copies the login within an hour while that machine is on.")
+FIX = ("Open youtube.com once in the configured browser, signed in with the {name} channel; TV Home copies the "
+       "login within an hour while the browser machine is reachable.")
 MESSAGES = {
     "nocookies": "TV Home has no YouTube login from the browser yet, so watched videos are not hidden. " + FIX,
-    "signedout": "TV Home's YouTube login from the browser stopped working (signed out or expired), so watched "
-                 "videos show again on the TV. " + FIX,
+    "signedout": "TV Home's YouTube login from the browser stopped working (signed out or expired), so watched videos "
+                 "show again on the TV. " + FIX,
     "nochannel": "TV Home cannot find the YouTube channel {name} in the browser's Google login, so watched videos "
                  "show again on the TV. " + FIX,
     "failing": "TV Home has not been able to read YouTube's watched state for over 2 h ({error}); watched "
@@ -56,6 +61,10 @@ MESSAGES = {
 
 class NoChannel(innertube.SessionError):
     """Signed in, but no account offers the wanted channel."""
+
+
+class StaleCopy(Exception):
+    """YouTube rejected the cookie copy and no fresh one could be taken (browser machine unavailable)."""
 
 
 @dataclass
@@ -108,7 +117,8 @@ def merge_progress(*lists: list[dict]) -> dict[str, float]:
 class CookieYouTube:
     def __init__(self, store: yt_cookies.CookieStore, state_path: Path, channel_name: str,
                  fetch: net.Fetch = net.request, notify: Callable[[str, str], bool] = notify_mod.send,
-                 clock: Callable[[], float] = time.time, every: float = WATCH_EVERY, grace: float = GRACE):
+                 clock: Callable[[], float] = time.time, every: float = WATCH_EVERY, grace: float = GRACE,
+                 rearm: float = REARM):
         self.store = store
         self.state_path = state_path
         self.channel_name = channel_name
@@ -117,9 +127,11 @@ class CookieYouTube:
         self._clock = clock
         self.every = every
         self.grace = grace
+        self.rearm = rearm
         self._lock = threading.Lock()
         saved = net.read_json(state_path, {}) or {}
         self.notified: str | None = saved.get("notified")
+        self.notified_at: float = saved.get("notifiedAt") or 0.0
         self.identity: Identity | None = None
         self.watch: WatchState | None = None
         self._last_attempt: float | None = None
@@ -129,8 +141,30 @@ class CookieYouTube:
 
     # -- session ---------------------------------------------------------------
 
+    def _session(self, work: Callable[[innertube.Client], object]):
+        """work(client) on the cookie copy; when YouTube rejects a copy that was not just taken,
+        once more on a fresh one."""
+        fresh = self.store.sync_if_due()
+        try:
+            return work(self._client())
+        except innertube.SessionError as exc:
+            if fresh or isinstance(exc, NoChannel):  # NoChannel: YouTube accepted the login
+                raise
+            got = self.store.resync()
+            if got is None:
+                raise StaleCopy(f"{exc} (cookie copy not refreshed: browser machine unavailable)") from exc
+            if not got:
+                raise OSError(f"{exc}; fresh cookie copy failed: {self.store.last_error}") from exc
+            log.info("YouTube rejected the cookie copy (%s); retrying with a fresh one", exc)
+        self.identity = None
+        return work(self._client())
+
+    def session(self, work: Callable[[innertube.Client], object]):
+        """work(client) as the channel, with the same cookie refresh and channel lookup (yt-playlist)."""
+        with self._lock:
+            return self._session(work)
+
     def _client(self) -> innertube.Client:
-        self.store.sync_if_due()
         cookies = self.store.cookies()
         if not cookies:
             raise yt_cookies.CookieError("no cookies copied from the browser yet")
@@ -162,8 +196,9 @@ class CookieYouTube:
             raise innertube.SessionError("YouTube answers as signed out")
         raise NoChannel(f"no channel named {self.channel_name!r} in the signed-in accounts")
 
-    def _browse(self, client: innertube.Client, browse_id: str | None = None,
-                continuation: str | None = None) -> dict:
+    def browse(self, client: innertube.Client, browse_id: str | None = None,
+               continuation: str | None = None) -> dict:
+        """client.browse, raising SessionError when YouTube answers signed out or for another channel."""
         data = client.browse(browse_id, continuation)
         if innertube.logged_out(data):
             self.identity = None
@@ -179,19 +214,21 @@ class CookieYouTube:
     def channels(self) -> list[dict]:
         """Every subscribed channel as {"id", "title"}; raises on any failure (the caller falls back)."""
         with self._lock:
-            client = self._client()
-            data = self._browse(client, "FEchannels")
-            out = innertube.parse_channels(data)
-            for _ in range(MAX_CHANNEL_PAGES):
-                token = innertube.continuation(data)
-                if not token:
-                    break
-                data = self._browse(client, continuation=token)
-                out.extend(innertube.parse_channels(data))
-            if not out:
-                raise OSError("FEchannels listed no channels")
-            seen: set[str] = set()
-            return [c for c in out if not (c["id"] in seen or seen.add(c["id"]))]
+            return self._session(self._channels)
+
+    def _channels(self, client: innertube.Client) -> list[dict]:
+        data = self.browse(client, "FEchannels")
+        out = innertube.parse_channels(data)
+        for _ in range(MAX_CHANNEL_PAGES):
+            token = innertube.continuation(data)
+            if not token:
+                break
+            data = self.browse(client, continuation=token)
+            out.extend(innertube.parse_channels(data))
+        if not out:
+            raise OSError("FEchannels listed no channels")
+        seen: set[str] = set()
+        return [c for c in out if not (c["id"] in seen or seen.add(c["id"]))]
 
     def watch_state(self) -> WatchState | None:
         """The current watch state, refreshed at most every `every` s; None while unavailable."""
@@ -203,10 +240,11 @@ class CookieYouTube:
             return self.watch if self.status_word == "ok" else None
 
     def _refresh(self, now: float) -> None:
+        def read(client: innertube.Client) -> tuple[list[dict], list[dict]]:
+            return (innertube.parse_videos(self.browse(client, "FEsubscriptions")),
+                    innertube.parse_history(self.browse(client, "FEhistory")))
         try:
-            client = self._client()
-            subs = innertube.parse_videos(self._browse(client, "FEsubscriptions"))
-            history = innertube.parse_history(self._browse(client, "FEhistory"))
+            subs, history = self._session(read)
         except Exception as exc:  # noqa: BLE001 - every failure ends up as a state, never a crash
             self._failed(now, exc)
             return
@@ -216,7 +254,7 @@ class CookieYouTube:
         self._failing_since = None
         log.info("watch state: %d feed and %d history videos, %d with progress, %d watched",
                  len(subs), len(history), len(self.watch.progress), len(self.watch.hidden()))
-        if self.notified:
+        if self.notified and now - self.notified_at >= self.rearm:
             self.notified = None
             self._save()
 
@@ -225,6 +263,12 @@ class CookieYouTube:
         log.warning("watch state failed: %s", self.last_error)
         if self._failing_since is None:
             self._failing_since = now
+        if isinstance(exc, StaleCopy):  # never an ntfy: the next copy, once the browser machine is reachable, decides
+            self.identity = None
+            if self.watch is None or now - self._failing_since >= self.grace:
+                self.status_word = "unavailable"
+                self.watch = None
+            return
         if isinstance(exc, yt_cookies.CookieError):
             kind = "nocookies"
         elif isinstance(exc, NoChannel):
@@ -245,11 +289,12 @@ class CookieYouTube:
             text = MESSAGES[kind].format(name=self.channel_name, error=self.last_error)
             self._notify("TV Home: YouTube watched state unavailable", text)
             self.notified = kind
+            self.notified_at = now
             self._save()
 
     def _save(self) -> None:
         try:
-            net.write_json(self.state_path, {"notified": self.notified,
+            net.write_json(self.state_path, {"notified": self.notified, "notifiedAt": self.notified_at,
                                              "at": datetime.now(timezone.utc).isoformat(timespec="seconds")})
         except OSError as exc:
             log.warning("cannot save %s: %s", self.state_path, exc)

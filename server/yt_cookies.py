@@ -33,6 +33,7 @@ import net
 
 log = logging.getLogger("tvhome.ytcookies")
 
+TWITCH_HOSTS = (".twitch.tv",)
 HOSTS = (".youtube.com",)  # only these go to youtube.com; keep the Google session out
 DB_FILES = ("cookies.sqlite", "cookies.sqlite-wal")
 SYNC_EVERY = 3600.0
@@ -143,12 +144,16 @@ def has_login(cookies: list[dict]) -> bool:
     return "LOGIN_INFO" in names and bool(names & {"SAPISID", "__Secure-1PAPISID", "__Secure-3PAPISID"})
 
 
-def extract(tar_bytes: bytes, now: float | None = None) -> list[dict]:
+def has_twitch_login(cookies: list[dict]) -> bool:
+    return any(c.get("host") == ".twitch.tv" and c.get("name") == "auth-token" and c.get("value") for c in cookies)
+
+
+def extract(tar_bytes: bytes, now: float | None = None, hosts: tuple[str, ...] = HOSTS) -> list[dict]:
     """The wanted cookies from the browser's tar; the temp copy is removed before returning."""
     tmp = Path(tempfile.mkdtemp(prefix="tvhome-cookies-"))  # 0700
     try:
         unpack(tar_bytes, tmp)
-        return read_db(tmp / "cookies.sqlite", now=now)
+        return read_db(tmp / "cookies.sqlite", hosts=hosts, now=now)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
@@ -162,8 +167,11 @@ class CookieStore:
 
     def __init__(self, path: Path, desktop_on: Callable[[], bool],
                  fetch_tar: Callable[[], tuple[bytes, str]] | None = None,
-                 every: float = SYNC_EVERY, retry: float = SYNC_RETRY, clock: Callable[[], float] = time.time):
+                 every: float = SYNC_EVERY, retry: float = SYNC_RETRY, clock: Callable[[], float] = time.time,
+                 hosts: tuple[str, ...] = HOSTS, login: Callable[[list[dict]], bool] = has_login):
         self.path = path
+        self.hosts = hosts
+        self._login = login
         self._desktop_on = desktop_on
         self._fetch_tar = fetch_tar or (lambda: (_ for _ in ()).throw(CookieError("no browser_profile configured")))
         self.every = every
@@ -201,6 +209,18 @@ class CookieStore:
             self._last_attempt = now
             return self._sync()
 
+    def resync(self) -> bool | None:
+        """A fresh copy now, for a login YouTube just rejected: None when not tried (desktop off,
+        or the last attempt was under `retry` s ago), else whether it worked."""
+        with self._lock:
+            now = self._clock()
+            if self._last_attempt is not None and now - self._last_attempt < self.retry:
+                return None
+            if not self._desktop_on():
+                return None
+            self._last_attempt = now
+            return self._sync()
+
     def sync_now(self) -> bool:
         with self._lock:
             self._last_attempt = self._clock()
@@ -209,7 +229,7 @@ class CookieStore:
     def _sync(self) -> bool:
         try:
             tar_bytes, profile = self._fetch_tar()
-            cookies = extract(tar_bytes)
+            cookies = extract(tar_bytes, hosts=self.hosts)
         except (OSError, CookieError, tarfile.TarError, subprocess.SubprocessError) as exc:
             self._last_ok = False
             self.last_error = f"{type(exc).__name__}: {exc}"
@@ -219,9 +239,9 @@ class CookieStore:
         self.last_error = None
         self.last_sync = self._clock()
         net.write_json(self.path, {"synced": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-                                   "profile": profile, "login": has_login(cookies), "cookies": cookies})
+                                   "profile": profile, "login": self._login(cookies), "cookies": cookies})
         log.info("cookie sync: %d cookies from browser profile %r, signed in: %s",
-                 len(cookies), profile, has_login(cookies))
+                 len(cookies), profile, self._login(cookies))
         return True
 
     def status(self) -> dict:

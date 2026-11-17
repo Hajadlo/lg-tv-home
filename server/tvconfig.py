@@ -32,14 +32,15 @@ DEFAULTS: dict[str, Any] = {
     "tv": {
         "ip": "", "ares_device": "tv", "app_id": "com.example.tvhome", "title": "Home", "takeover": True,
         "apps": {"jellyfin": "org.jellyfin.webos", "youtube": "youtube.leanback.v4",
-                 "moonlight": "com.limelight.webos"},
+                 "moonlight": "com.limelight.webos", "twitch": "twitch.adamffdev.v1"},
     },
     "weather": {"latitude": None, "longitude": None, "name": ""},
     "jellyfin": {"url": "", "user": ""},
     "youtube": {"channel": "", "browser_profile": "", "ssh_host": "", "subscriptions_csv": ""},
+    "twitch": {"browser_profile": "", "ssh_host": ""},
     "steam": {"pc_ip": "", "pc_mac": "", "broadcast": [], "sunshine_port": 47989,
               "moonlight_host_uuid": "", "moonlight_app_id": 0, "ssh_host": "", "sunshine_unit": "",
-              "steam_root": "~/.local/share/Steam", "steam_user_id": 0},
+              "steam_root": "~/.local/share/Steam", "steam_user_id": 0, "shortcuts": []},
     "ntfy": {"url": ""},
 }
 
@@ -82,6 +83,7 @@ def features(cfg: dict) -> dict[str, bool]:
         "jellyfin": bool(cfg["jellyfin"]["url"] and cfg["jellyfin"]["user"]),
         "youtube": youtube_cookies(cfg) or bool(cfg["youtube"]["subscriptions_csv"])
         or (CONFIG_DIR / "google-oauth-client.json").is_file(),
+        "twitch": bool(cfg["twitch"]["browser_profile"]),
         "steam": bool(s["pc_ip"] and s["pc_mac"] and s["moonlight_host_uuid"]),
         "weather": w["latitude"] is not None and w["longitude"] is not None,
     }

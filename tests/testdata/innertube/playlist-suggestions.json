@@ -1,0 +1,162 @@
+{
+ "onResponseReceivedActions": [
+  {
+   "appendContinuationItemsAction": {
+    "continuationItems": [
+     {
+      "itemSectionRenderer": {
+       "header": {
+        "itemSectionHeaderRenderer": {
+         "title": {
+          "simpleText": "Recommended videos"
+         }
+        }
+       },
+       "contents": [
+        {
+         "playlistVideoRenderer": {
+          "videoId": "ssssssssss1",
+          "title": {
+           "runs": [
+            {
+             "text": "Suggested one"
+            }
+           ]
+          },
+          "shortBylineText": {
+           "runs": [
+            {
+             "text": "Someone"
+            }
+           ]
+          },
+          "menu": {
+           "menuRenderer": {
+            "topLevelButtons": [
+             {
+              "buttonRenderer": {
+               "command": {
+                "playlistEditEndpoint": {
+                 "clientActions": [
+                  {
+                   "commandExecutorCommand": {
+                    "commands": [
+                     {
+                      "addRendererToItemSectionAction": {
+                       "renderer": {
+                        "playlistVideoRenderer": {
+                         "videoId": "ssssssssss1",
+                         "title": {
+                          "runs": [
+                           {
+                            "text": "Suggested one"
+                           }
+                          ]
+                         },
+                         "shortBylineText": {
+                          "runs": [
+                           {
+                            "text": "Someone"
+                           }
+                          ]
+                         },
+                         "setVideoId": "SETSUGGESTED0001"
+                        }
+                       }
+                      }
+                     }
+                    ]
+                   }
+                  }
+                 ]
+                }
+               }
+              }
+             }
+            ]
+           }
+          }
+         }
+        },
+        {
+         "playlistVideoRenderer": {
+          "videoId": "ssssssssss2",
+          "title": {
+           "runs": [
+            {
+             "text": "Suggested two"
+            }
+           ]
+          },
+          "shortBylineText": {
+           "runs": [
+            {
+             "text": "Someone"
+            }
+           ]
+          },
+          "menu": {
+           "menuRenderer": {
+            "topLevelButtons": [
+             {
+              "buttonRenderer": {
+               "command": {
+                "playlistEditEndpoint": {
+                 "clientActions": [
+                  {
+                   "commandExecutorCommand": {
+                    "commands": [
+                     {
+                      "addRendererToItemSectionAction": {
+                       "renderer": {
+                        "playlistVideoRenderer": {
+                         "videoId": "ssssssssss2",
+                         "title": {
+                          "runs": [
+                           {
+                            "text": "Suggested two"
+                           }
+                          ]
+                         },
+                         "shortBylineText": {
+                          "runs": [
+                           {
+                            "text": "Someone"
+                           }
+                          ]
+                         },
+                         "setVideoId": "SETSUGGESTED0001"
+                        }
+                       }
+                      }
+                     }
+                    ]
+                   }
+                  }
+                 ]
+                }
+               }
+              }
+             }
+            ]
+           }
+          }
+         }
+        }
+       ]
+      }
+     },
+     {
+      "continuationItemRenderer": {
+       "continuationEndpoint": {
+        "continuationCommand": {
+         "token": "FAKE_MORE_SUGGESTIONS"
+        }
+       }
+      }
+     }
+    ]
+   }
+  }
+ ]
+}

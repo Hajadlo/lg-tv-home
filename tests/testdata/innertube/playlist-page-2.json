@@ -1,0 +1,64 @@
+{
+ "onResponseReceivedActions": [
+  {
+   "appendContinuationItemsAction": {
+    "targetId": "pl-video-list",
+    "continuationItems": [
+     {
+      "playlistVideoRenderer": {
+       "videoId": "cccccccccc3",
+       "index": {
+        "simpleText": "3"
+       },
+       "setVideoId": "SETCCCCCCCCCCCC3",
+       "title": {
+        "runs": [
+         {
+          "text": "Track three"
+         }
+        ]
+       },
+       "shortBylineText": {
+        "runs": [
+         {
+          "text": "Artist C"
+         }
+        ]
+       },
+       "lengthSeconds": "200",
+       "isPlayable": true,
+       "menu": {
+        "menuRenderer": {
+         "items": [
+          {
+           "menuServiceItemRenderer": {
+            "text": {
+             "runs": [
+              {
+               "text": "Remove from Fake list"
+              }
+             ]
+            },
+            "serviceEndpoint": {
+             "playlistEditEndpoint": {
+              "playlistId": "PLFAKE0000000000000001",
+              "actions": [
+               {
+                "action": "ACTION_REMOVE_VIDEO",
+                "setVideoId": "SETCCCCCCCCCCCC3"
+               }
+              ]
+             }
+            }
+           }
+          }
+         ]
+        }
+       }
+      }
+     }
+    ]
+   }
+  }
+ ]
+}

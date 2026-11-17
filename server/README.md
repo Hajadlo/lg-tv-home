@@ -34,7 +34,8 @@ User-Agent, which tells you the TV's Chromium version.
 |---|---|---|
 | Jellyfin | `[jellyfin] url` and `user` | Jellyfin |
 | YouTube | `[youtube] channel` + `browser_profile`, or `subscriptions_csv`, or an OAuth client file | YouTube |
-| Steam | `[steam] pc_ip`, `pc_mac` and `moonlight_host_uuid` | Steam |
+| Twitch | `[twitch] browser_profile` | Twitch |
+| Steam | `[steam] pc_ip`, `pc_mac` and `moonlight_host_uuid` | Games |
 | Weather | `[weather] latitude` and `longitude` | (top left line) |
 
 A source that is off is never fetched, its key in `/api/home` is `null`, and
@@ -62,14 +63,16 @@ All answers carry `Access-Control-Allow-Origin: *`.
 ```json
 {
   "now": "2026-10-20T19:42:00+02:00",
-  "features": {"jellyfin": true, "youtube": true, "steam": true, "weather": true},
+  "features": {"jellyfin": true, "youtube": true, "twitch": true, "steam": true, "weather": true},
   "weather": {"tempC": 11, "code": "rain", "label": "Light rain", "highC": 14, "lowC": 7, "note": "Rain until 21:00"},
   "jellyfin": {"resume": [Item], "nextUp": [Item], "latest": [Item]},
   "pc": {"state": "off|waking|on", "sunshine": "listening|down|unknown"},
   "system": {"hddFreeGb": 412, "hddTotalGb": 1863},
   "youtube": {"updated": "…", "channelCount": 42, "auth": "ok|missing|expired",
               "watched": "ok|unavailable", "videos": [Video], "continue": [Video]},
-  "steam": {"updated": "…", "recent": [Game]}
+  "twitch": {"updated": "…", "auth": "ok|missing|expired", "live": [Stream], "recent": [Channel]},
+  "steam": {"updated": "…", "recent": [Game], "library": [Game]},
+  "gameShortcuts": [{"name": "Example", "appId": 123456, "art": "https://example.com/art.jpg"}]
 }
 ```
 
@@ -78,7 +81,7 @@ All answers carry `Access-Control-Allow-Origin: *`.
   `backdrop`, `thumb`, `poster`, `logo` (relative image URLs), `logoDark`
   (the logo is too dark for the page; the UI sets the title in type).
 - `Video`: `id`, `title`, `channel`, `channelId`, `published`, `views`,
-  `progress` (0-1 or `null`), `thumb`, `live` (true while the stream is on
+  `progress` (0-1 or `null`), `duration` (seconds or `null`), `thumb`, `live` (true while the stream is on
   air). Finished streams and scheduled streams or premieres are left out.
 - `Game`: `appid`, `name`, `lastPlayed`, `playtimeH`, `cover`, `hero`,
   `logo`, `header`, `logoDark`.
@@ -161,3 +164,17 @@ note says when rain starts or stops in the next 12 h.
 
 `TVHOME_CONFIG` overrides the config file, `TVHOME_CONFIG_DIR` and
 `TVHOME_CACHE_DIR` the two directories.
+
+## Browser logins and playlists
+
+The YouTube cookie reader retries once with a fresh copy after a rejected
+session, keeps the last good watch state during transient failures and limits
+repeat alerts. `server/yt-playlist list|add|remove|privacy` uses the
+configured YouTube channel and browser profile. Changes are read back; the
+playlist reader follows only the playlist's own continuation, not YouTube's
+separate suggestions.
+
+For Twitch, configure `[twitch] browser_profile` and optionally `ssh_host`.
+The server copies only Twitch cookies to a separate mode-600 file and uses the
+Twitch web API for followed channels (the API can change). The optional Twitch
+tab is not part of the TV-only edition.

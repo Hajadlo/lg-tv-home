@@ -37,7 +37,8 @@ def settings(cfg: dict, ui_url: str | None = None) -> dict:
         "uiUrl": url if url.endswith("/") else url + "/",
         "apps": {name: apps[app] for name, app, on in (("jellyfin", "jellyfin", f["jellyfin"]),
                                                        ("moonlight", "moonlight", f["steam"]),
-                                                       ("youtube", "youtube", f["youtube"])) if on and apps.get(app)},
+                                                       ("youtube", "youtube", f["youtube"]),
+                                                       ("twitch", "twitch", f.get("twitch", False))) if on and apps.get(app)},
         "moonlight": {"hostUuid": st["moonlight_host_uuid"], "appId": int(st["moonlight_app_id"] or 0)},
     }
 

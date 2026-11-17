@@ -22,8 +22,8 @@ Not sure? See [Three ways to run it](#three-ways-to-run-it) below.
 
 ## What it does
 
-- **Apps as tabs.** Across the top sit the "doors": Jellyfin, YouTube and
-  Steam. Moving onto a door shows that app's content below it; Enter opens
+- **Apps as tabs.** Across the top sit the "doors": Jellyfin, YouTube, Twitch and
+  Games. Moving onto a door shows that app's content below it; Enter opens
   the app. Up from any row brings you back to the same tab. Only the apps you
   set up get a tab.
 - **Takes over the Home button.** When the TV turns on, TV Home is the first
@@ -35,11 +35,13 @@ Not sure? See [Three ways to run it](#three-ways-to-run-it) below.
 - **YouTube without ads.** New videos from your subscriptions, played in
   YouTube AdFree (an ad-free YouTube app for webOS). Videos you have already
   watched (on any device) are left out, half-watched ones show a progress bar,
-  and a Continue watching row picks up where you stopped. Streams on air get
-  a red LIVE badge; finished streams and scheduled ones are left out.
-- **Steam via Moonlight.** One press wakes your gaming PC, makes sure Sunshine
-  is running, and opens Moonlight streaming Steam Big Picture. Recently played
-  games are listed with their art.
+  and a Continue watching row picks up where you stopped. Video durations are
+  shown where available. Streams on air get a red LIVE badge; finished streams
+  and scheduled ones are left out.
+- **Twitch.** With a configured browser login, followed channels live now and
+  recently live are shown. Channel launches use Twitch AdFree.
+- **Games via Moonlight.** Wake the gaming PC and open Steam Big Picture or a
+  configured Sunshine app shortcut. Installed games are listed with their art.
 - Also: clock, weather, shortcuts to Picture, Sound, Inputs and all settings,
   a slow slideshow when idle, and a small offline screen if the server is down.
 

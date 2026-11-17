@@ -1,0 +1,96 @@
+#!/usr/bin/env python3
+"""Patch Twitch AdFree on the TV for TV Home.
+
+Usage: twitch-adfree-patch [--device tv] [--check | --restore]
+
+1. index.js: Twitch AdFree 1.6.6 reads `webOSSystem.launchParams.channel`,
+   but webOS hands launchParams over as a JSON string, so a channel from TV
+   Home was ignored and Twitch's home opened. The patch parses the string.
+2. webOSUserScripts/userScript.js: twitch-tvhome.js goes in front of it
+   (chat hidden by default, the best quality always, a channel from a
+   relaunch). Applying again replaces an older copy.
+
+Both files are checked against the 1.6.6 originals first and backed up
+beside them (`*.before-tvhome`). Takes effect on the next start of Twitch
+AdFree; a reinstall or update of the app undoes it.
+"""
+import argparse
+import hashlib
+import inspect
+from pathlib import Path
+import shlex
+import subprocess
+
+APP = "/media/developer/apps/usr/palm/applications/twitch.adamffdev.v1"
+ADDON = Path(__file__).resolve().with_name("twitch-tvhome.js")
+SPEC = {
+    "index": {
+        "original": "535a068db2ad6b62b9a10619eca821e5c9c826fc90d0f0ef44bb015d9b934685",
+        "old": 'r=window.webOSSystem.launchParams.channel||""',
+        "new": 'r=function(p){try{p="string"==typeof p?JSON.parse(p):p}catch(e){p={}}'
+               'return p&&p.channel||""}(window.webOSSystem.launchParams)',
+    },
+    "userScript": {"original": "14e11c2076d4471001b73abb5d265caecf3b28cab79431e33a1aabb68eb97ae5"},
+    "end": "/* tv-home: end */\n",
+}
+
+
+def configure(root, action, spec, addon):
+    """{"installed", "changed"} for index.js and userScript.js together; raises before touching
+    anything when a file is not the known original or our patched form of it."""
+    sha = lambda b: hashlib.sha256(b).hexdigest()
+    index = Path(root) / "index.js"
+    user = Path(root) / "webOSUserScripts/userScript.js"
+    old, new = spec["index"]["old"].encode(), spec["index"]["new"].encode()
+    end = spec["end"].encode()
+
+    index_now = index.read_bytes()
+    if sha(index_now) == spec["index"]["original"]:
+        index_orig = index_now
+    elif index_now.count(new) == 1 and sha(index_now.replace(new, old)) == spec["index"]["original"]:
+        index_orig = index_now.replace(new, old)
+    else:
+        raise RuntimeError("Unrecognized Twitch AdFree index.js; leaving the app untouched")
+    user_now = user.read_bytes()
+    user_orig = user_now.split(end, 1)[1] if end in user_now else user_now
+    if sha(user_orig) != spec["userScript"]["original"]:
+        raise RuntimeError("Unrecognized Twitch AdFree userScript.js; leaving the app untouched")
+
+    index_want = index_orig.replace(old, new) if action != "restore" else index_orig
+    user_want = addon + user_orig if action != "restore" else user_orig
+    installed = index_now == index_orig.replace(old, new) and user_now == addon + user_orig
+    if action == "check":
+        return {"installed": installed, "index": index_now != index_orig, "userScript": user_now != user_orig}
+    changed = False
+    for path, now, orig, want in ((index, index_now, index_orig, index_want), (user, user_now, user_orig, user_want)):
+        if now == want:
+            continue
+        backup = path.with_name(path.name + ".before-tvhome")
+        if not backup.exists():
+            backup.write_bytes(orig)
+        pending = path.with_name(path.name + ".tvhome-new")
+        pending.write_bytes(want)
+        pending.chmod(path.stat().st_mode & 0o777)
+        pending.replace(path)
+        changed = True
+    return {"installed": action != "restore", "changed": changed}
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--device", default="tv")
+    actions = parser.add_mutually_exclusive_group()
+    actions.add_argument("--check", action="store_true")
+    actions.add_argument("--restore", action="store_true")
+    args = parser.parse_args()
+    action = "check" if args.check else "restore" if args.restore else "install"
+    source = "from pathlib import Path\nimport json, hashlib\n" + inspect.getsource(configure)
+    source += "\nr = configure(%r, %r, %r, %r)\nprint(json.dumps(r))\n" % (APP, action, SPEC, ADDON.read_bytes())
+    if args.check:
+        source += "raise SystemExit(0 if r['installed'] else 1)\n"
+    command = "python3 -c " + shlex.quote(source)
+    return subprocess.run(["ares-novacom", "--device", args.device, "--run", command]).returncode
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

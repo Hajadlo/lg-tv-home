@@ -1,0 +1,275 @@
+#!/usr/bin/env python3
+"""Read or change the user's YouTube playlists with the configured TV Home channel and cookie login.
+
+  yt-playlist list [PLAYLIST_ID] [--json]
+  yt-playlist add PLAYLIST_ID VIDEO_ID...
+  yt-playlist remove PLAYLIST_ID VIDEO_ID...
+  yt-playlist privacy PLAYLIST_ID... [--set private|unlisted|public]
+
+`list` without an id prints the library's playlists (id, details, title); with
+one, the playlist's tracks (video id, channel, title), following the list's own
+continuation. After the tracks, a playlist page offers YouTube's "recommended"
+songs through a separate continuation. They are never read, so they never count
+as tracks: one reader took about five suggestions per playlist for the user's.
+YouTube also hides unavailable videos, so a list can be shorter than its count.
+
+`add` and `remove` change the playlist through InnerTube's browse/edit_playlist,
+then read it back and print the result; `remove` refuses a video that is not
+one of the playlist's tracks. `privacy` prints each playlist's privacy, after
+changing it with --set. YouTube has no default privacy for new playlists.
+
+The session uses [youtube] channel, browser_profile, and ssh_host from
+TV Home's configuration. Exit 0 on success, 1 on a rejected request or failed
+read-back, and 2 on bad arguments.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import re
+import sys
+from pathlib import Path
+from typing import Callable
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+import innertube  # noqa: E402
+import net  # noqa: E402
+import tvconfig  # noqa: E402
+import yt_cookies  # noqa: E402
+import yt_watched  # noqa: E402
+
+CONFIG_DIR = Path(os.environ.get("TVHOME_CONFIG_DIR", Path.home() / ".config/tv-home"))
+CACHE_DIR = Path(os.environ.get("TVHOME_CACHE_DIR", Path.home() / ".cache/tv-home"))
+PRIVACY = ("Public", "Unlisted", "Private")
+MAX_PAGES = 60  # 100 tracks a page; YouTube caps a playlist at 5000
+
+
+class Refused(Exception):
+    """YouTube refused a change, or the read-back disagrees with it."""
+
+
+# -- parsing (shapes checked against live answers on 2026-10-30) -------------------
+
+
+def _parts(obj) -> list[str]:
+    """The text of every metadataParts entry under obj, in order."""
+    out: list[str] = []
+
+    def visit(o: dict) -> bool:
+        parts = o.get("metadataParts")
+        if isinstance(parts, list):
+            out.extend(t for p in parts if isinstance(p, dict) and (t := innertube._text(p.get("text"))))
+        return False
+
+    innertube._walk(obj, visit)
+    return out
+
+
+def the_list(page: dict) -> list | None:
+    """The contents of a playlist page's own list (playlistVideoListRenderer), else None."""
+    found: list[list] = []
+
+    def visit(o: dict) -> bool:
+        lst = o.get("playlistVideoListRenderer")
+        if isinstance(lst, dict):
+            found.append(lst.get("contents") or [])
+            return True
+        return False
+
+    innertube._walk(page.get("contents") or {}, visit)
+    return found[0] if found else None
+
+
+def tracks(items: list) -> list[dict]:
+    """The list's own entries: playlistVideoRenderer items directly in it, never nested ones."""
+    out = []
+    for item in items:
+        r = item.get("playlistVideoRenderer") if isinstance(item, dict) else None
+        if isinstance(r, dict) and r.get("videoId"):
+            out.append({"id": r["videoId"], "title": innertube._text(r.get("title")),
+                        "channel": innertube._text(r.get("shortBylineText")), "setVideoId": r.get("setVideoId")})
+    return out
+
+
+def list_token(items: list) -> str | None:
+    """The token of the list's own last item, a continuationItemRenderer (nested in a command executor)."""
+    last = items[-1] if items else None
+    item = last.get("continuationItemRenderer") if isinstance(last, dict) else None
+    token = None
+
+    def visit(o: dict) -> bool:
+        nonlocal token
+        cmd = o.get("continuationCommand")
+        if isinstance(cmd, dict) and cmd.get("token") and token is None:
+            token = cmd["token"]
+            return True
+        return False
+
+    if isinstance(item, dict):
+        innertube._walk(item, visit)
+    return token
+
+
+def continuation_items(data: dict) -> list:
+    for action in data.get("onResponseReceivedActions") or []:
+        append = (action or {}).get("appendContinuationItemsAction")
+        if isinstance(append, dict):
+            return append.get("continuationItems") or []
+    return []
+
+
+def header(page: dict) -> dict:
+    """{"title", "privacy", "videos", "details"} from a playlist page's header; `videos` is YouTube's
+    count, which includes unavailable videos the list hides."""
+    hdr = (page.get("header") or {}).get("pageHeaderRenderer") or {}
+    details = _parts(hdr)
+    count = next((d for d in details if re.fullmatch(r"[\d,]+ videos?", d)), None)
+    return {"title": hdr.get("pageTitle") or "", "privacy": next((p for p in details if p in PRIVACY), None),
+            "videos": int(re.sub(r"\D", "", count)) if count else None, "details": details}
+
+
+def library(data: dict) -> list[dict]:
+    """The playlists of FEplaylist_aggregation as {"id", "title", "details"}."""
+    out: list[dict] = []
+
+    def visit(o: dict) -> bool:
+        lv = o.get("lockupViewModel")
+        if not isinstance(lv, dict):
+            return False
+        if lv.get("contentType") == "LOCKUP_CONTENT_TYPE_PLAYLIST" and lv.get("contentId"):
+            md = (lv.get("metadata") or {}).get("lockupMetadataViewModel") or {}
+            out.append({"id": lv["contentId"], "title": innertube._text(md.get("title")),
+                        "details": _parts(md.get("metadata"))})
+        return True
+
+    innertube._walk(data.get("contents") or {}, visit, innertube.NOT_CONTENT)
+    return out
+
+
+# -- calls ---------------------------------------------------------------------
+
+
+def read_playlist(yt: yt_watched.CookieYouTube, client: innertube.Client, playlist_id: str) -> dict:
+    page = yt.browse(client, "VL" + playlist_id)
+    items = the_list(page)
+    if items is None:
+        raise Refused(f"{playlist_id}: no playlist in YouTube's answer (wrong id, or not visible to this channel)")
+    out = tracks(items)
+    token = list_token(items)
+    for _ in range(MAX_PAGES):
+        if not token:
+            break
+        items = continuation_items(yt.browse(client, continuation=token))
+        out += tracks(items)
+        token = list_token(items)
+    return {"id": playlist_id, **header(page), "tracks": out}
+
+
+def edit(client: innertube.Client, playlist_id: str, actions: list[dict]) -> None:
+    answer = client.call("browse/edit_playlist", {"playlistId": playlist_id, "actions": actions})
+    if answer.get("status") != "STATUS_SUCCEEDED":
+        raise Refused(f"{playlist_id}: edit_playlist answered {answer.get('status') or 'no status'}")
+
+
+def show_tracks(playlist: dict, as_json: bool) -> None:
+    if as_json:
+        print(json.dumps(playlist, ensure_ascii=False, indent=1))
+        return
+    n, videos = len(playlist["tracks"]), playlist["videos"]
+    hidden = f" (YouTube counts {videos}: it hides unavailable videos)" if videos and videos != n else ""
+    print(f"# {playlist['title']}: {n} tracks{hidden}, {playlist['privacy'] or 'privacy unknown'}")
+    for t in playlist["tracks"]:
+        print(f"{t['id']}\t{t['channel']}\t{t['title']}")
+
+
+def run(args, yt: yt_watched.CookieYouTube) -> int:
+    def work(client: innertube.Client) -> int:
+        if args.command == "list" and not args.playlist:
+            playlists = library(yt.browse(client, "FEplaylist_aggregation"))
+            if args.json:
+                print(json.dumps(playlists, ensure_ascii=False, indent=1))
+            for p in [] if args.json else playlists:
+                print(f"{p['id']}\t{' · '.join(p['details'])}\t{p['title']}")
+            return 0
+        if args.command == "list":
+            show_tracks(read_playlist(yt, client, args.playlist), args.json)
+            return 0
+        if args.command == "add":
+            edit(client, args.playlist, [{"action": "ACTION_ADD_VIDEO", "addedVideoId": v} for v in args.videos])
+            after = read_playlist(yt, client, args.playlist)
+            show_tracks(after, False)
+            missing = set(args.videos) - {t["id"] for t in after["tracks"]}
+            if missing:
+                raise Refused(f"not in the playlist after adding: {' '.join(sorted(missing))}")
+            return 0
+        if args.command == "remove":
+            before = read_playlist(yt, client, args.playlist)
+            absent = set(args.videos) - {t["id"] for t in before["tracks"]}
+            if absent:
+                raise Refused(f"not tracks of {before['title']!r} (a suggestion is not a track): "
+                              f"{' '.join(sorted(absent))}; nothing removed")
+            actions = [{"action": "ACTION_REMOVE_VIDEO", "setVideoId": t["setVideoId"], "removedVideoId": t["id"]}
+                       for t in before["tracks"] if t["id"] in set(args.videos)]
+            edit(client, args.playlist, actions)
+            after = read_playlist(yt, client, args.playlist)
+            show_tracks(after, False)
+            left = set(args.videos) & {t["id"] for t in after["tracks"]}
+            if left:
+                raise Refused(f"still in the playlist after removing: {' '.join(sorted(left))}")
+            return 0
+        wrong = []
+        for playlist_id in args.playlists:
+            if args.set:
+                edit(client, playlist_id, [{"action": "ACTION_SET_PLAYLIST_PRIVACY",
+                                            "playlistPrivacy": args.set.upper()}])
+            info = header(yt.browse(client, "VL" + playlist_id))
+            print(f"{playlist_id}\t{info['privacy'] or '?'}\t{info['title']}")
+            if args.set and (info["privacy"] or "").lower() != args.set:
+                wrong.append(playlist_id)
+        if wrong:
+            raise Refused(f"privacy is not {args.set} after the change: {' '.join(wrong)}")
+        return 0
+
+    return yt.session(work)
+
+
+def open_session(fetch=net.request) -> yt_watched.CookieYouTube:
+    cfg = tvconfig.load()["youtube"]
+    if not cfg["channel"] or not cfg["browser_profile"]:
+        raise yt_cookies.CookieError("set [youtube] channel and browser_profile in config.toml")
+    store = yt_cookies.CookieStore(CONFIG_DIR / "yt-cookies.json", lambda: True,
+                                   yt_cookies.tar_reader(cfg["browser_profile"], cfg["ssh_host"]))
+    return yt_watched.CookieYouTube(store, CACHE_DIR / "yt-watched.json", cfg["channel"].lstrip("@"),
+                                    fetch=fetch, notify=lambda t, m: False)
+
+
+def parse(argv: list[str]):
+    p = argparse.ArgumentParser(prog="yt-playlist", description=__doc__.splitlines()[0])
+    sub = p.add_subparsers(dest="command", required=True)
+    ls = sub.add_parser("list", help="the playlists, or one playlist's tracks")
+    ls.add_argument("playlist", nargs="?")
+    ls.add_argument("--json", action="store_true")
+    for name in ("add", "remove"):
+        sp = sub.add_parser(name, help=f"{name} videos")
+        sp.add_argument("playlist")
+        sp.add_argument("videos", nargs="+", metavar="VIDEO_ID")
+    pv = sub.add_parser("privacy", help="print or --set playlists' privacy")
+    pv.add_argument("playlists", nargs="+", metavar="PLAYLIST_ID")
+    pv.add_argument("--set", choices=[x.lower() for x in PRIVACY])
+    return p.parse_args(argv)
+
+
+def main(argv: list[str] | None = None, session: yt_watched.CookieYouTube | None = None) -> int:
+    args = parse(sys.argv[1:] if argv is None else argv)
+    try:
+        return run(args, session or open_session())
+    except (Refused, innertube.SessionError, yt_watched.StaleCopy, yt_cookies.CookieError, OSError) as exc:
+        print(f"yt-playlist: {exc}", file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

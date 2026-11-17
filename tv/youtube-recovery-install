@@ -1,0 +1,53 @@
+#!/usr/bin/env python3
+"""Reinstall the backed-up YouTube AdFree 0.5.3 with TV Home startup recovery."""
+import argparse
+import hashlib
+import shutil
+import subprocess
+import tarfile
+import tempfile
+from pathlib import Path
+
+APP = 'youtube.leanback.v4'
+ROOT = '/media/developer/apps/usr/palm/applications/' + APP
+
+ORIGINAL_INDEX = 'fb465c3536e16193a9a8f5dc9711b72ac8f572f50d8315bbf66ddef1c36f9d22'
+ORIGINAL_SCRIPT = '08e9d40ba5bb453da62e1a78c5814d1626d76bb99f140ce30f10afc2535ab69c'
+INSTALLED_INDEX = {ORIGINAL_INDEX, '393837533772579b494d8ff741316ff9dbfc82189a1665da01525203b9cc3e81'}
+INSTALLED_SCRIPT = {ORIGINAL_SCRIPT, '9d00334f390ceeff548ef350d43cf31882105aa9a07a43e0984177270afa0c38'}
+
+
+def sha(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Install the guarded YouTube AdFree 0.5.3 startup recovery")
+    parser.add_argument("--backup", type=Path, required=True, help="backup tar archive containing the original app directory")
+    parser.add_argument("--device", default="tv", help="ares device name")
+    args = parser.parse_args()
+    result = subprocess.run(['ares-novacom', '--device', args.device, '--run',
+                             f'sha256sum {ROOT}/index.js {ROOT}/webOSUserScripts/userScript.js'],
+                            check=True, text=True, capture_output=True)
+    hashes = [line.split()[0] for line in result.stdout.splitlines() if ROOT in line]
+    if len(hashes) != 2 or hashes[0] not in INSTALLED_INDEX or hashes[1] not in INSTALLED_SCRIPT:
+        raise SystemExit('Installed YouTube files are not the known 0.5.3 build; leaving them untouched.')
+    with tempfile.TemporaryDirectory(prefix='tvhome-youtube-') as tmp:
+        directory = Path(tmp)
+        with tarfile.open(args.backup) as archive:
+            members = [m for m in archive.getmembers() if m.name == APP or m.name.startswith(APP + '/')]
+            archive.extractall(directory, members=members, filter='data')
+        app = directory / APP
+        script = app / 'webOSUserScripts/userScript.js'
+        if sha(app / 'index.js') != ORIGINAL_INDEX or sha(script) != ORIGINAL_SCRIPT:
+            raise SystemExit('Backup does not match YouTube AdFree 0.5.3; leaving the TV untouched.')
+        addon = Path(__file__).with_name('youtube-startup-recovery.js').read_bytes()
+        script.write_bytes(addon + b'\n' + script.read_bytes())
+        # The original appinfo references this file although the installed package lacks it.
+        shutil.copyfile(app / 'largeIcon.png', app / 'imageForRecents.png')
+        subprocess.run(['ares-package', '-o', str(directory), str(app)], check=True)
+        subprocess.run(['ares-install', '--device', args.device, str(directory / (APP + '_0.5.3_all.ipk'))], check=True)
+
+
+if __name__ == '__main__':
+    main()

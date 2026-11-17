@@ -43,6 +43,7 @@ takeover = true
 # `ares-launch --device tv --list`; they can differ between builds.
 jellyfin = "org.jellyfin.webos"
 youtube = "youtube.leanback.v4"      # YouTube AdFree (webosbrew youtube-webos)
+twitch = "twitch.adamffdev.v1"    # Twitch AdFree
 moonlight = "com.limelight.webos"    # Moonlight TV (moonlight-tv)
 
 [weather]
@@ -84,6 +85,11 @@ ssh_host = ""
 # set up with server/youtube-auth; see SETUP.md.)
 subscriptions_csv = ""
 
+[twitch]
+# Firefox-family profile signed into Twitch; optional.
+browser_profile = ""
+ssh_host = ""
+
 [steam]
 # The Steam tab: wakes the gaming PC, makes sure Sunshine listens, then opens
 # Moonlight on the TV streaming one Sunshine app (e.g. Steam Big Picture).
@@ -101,6 +107,12 @@ ssh_host = ""
 sunshine_unit = ""                    # systemd --user unit that runs Sunshine on the PC, e.g. "sunshine.service"
 steam_root = "~/.local/share/Steam"   # on the PC (Flatpak Steam: ~/.var/app/com.valvesoftware.Steam/.local/share/Steam)
 steam_user_id = 0                     # Steam userdata folder to read; 0 = the account that logged in last
+
+# Optional Sunshine app shortcuts shown before the Steam library.
+# [[steam.shortcuts]]
+# name = "My game"
+# app_id = 123456789
+# art = "https://example.com/game.jpg"  # optional image URL
 
 [ntfy]
 # Optional phone alerts (Dev Mode renewal failed, YouTube login stopped

@@ -20,6 +20,7 @@ CFG = tvconfig.from_dict({
     "server": {"url": "http://192.0.2.10:8797"},
     "jellyfin": {"url": "http://127.0.0.1:8096", "user": "viewer"},
     "youtube": {"subscriptions_csv": "subs.csv"},
+    "twitch": {"browser_profile": "~/.mozilla/firefox"},
     "steam": {"pc_ip": "192.0.2.5", "pc_mac": "00:11:22:33:44:55", "moonlight_host_uuid": HOST_UUID,
               "moonlight_app_id": 1234567},
 })
@@ -66,6 +67,9 @@ function makeWindow(withBridge, failFirstUri) {
   out.yt = await t.launch('youtube', { videoId: 'dQw4w9WgXcQ' });
   out.ytBad = await t.launch('youtube', { videoId: 'x"&list=1' });
   out.ytHome = await t.launch('youtube');
+  out.tw = await t.launch('twitch', {channel: 'example_stream'});
+  out.twBad = await t.launch('twitch', {channel: '../invalid'});
+  out.moonGame = await t.launch('moonlight', {appId: 98765});
   for (const s of ['all', 'picture', 'sound', 'network', 'input', 'bogus']) await t.openSettings(s);
   await t.lgHome();
   try { await t.launch('netflix'); out.unknown = 'resolved'; } catch (e) { out.unknown = e.code; }
@@ -160,3 +164,10 @@ def test_appinfo_takes_id_and_title(tmp_path):
     info = json.loads((tmp_path / "appinfo.json").read_text())
     assert (info["id"], info["title"]) == ("org.example.couch", "Couch")
     assert (tmp_path / "webOSUserScripts/userScript.js").read_text() == (tmp_path / "bridge.js").read_text()
+
+
+def test_twitch_channel_and_configured_sunshine_app_launch(result):
+    assert result["tw"]["params"] == {"channel": "example_stream"}
+    assert result["tw"]["deepLinked"] is True
+    assert result["twBad"]["params"] is None
+    assert result["moonGame"]["params"]["host_app_id"] == 98765

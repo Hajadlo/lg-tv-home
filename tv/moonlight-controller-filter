@@ -1,0 +1,78 @@
+#!/usr/bin/env python3
+"""Keep the LG C5 remote out of Moonlight's game-controller slots.
+
+Usage: moonlight-controller-filter [--device tv] [--check | --restore]
+Applies on the next Moonlight launch; never closes a stream or game.
+"""
+import argparse
+import hashlib
+import inspect
+from pathlib import Path
+import shlex
+import subprocess
+
+APP = "/media/developer/apps/usr/palm/applications/com.limelight.webos"
+SPEC = {
+    "original": "036f924b54f53359b8dc85c2a67c203a79479beb9b9241fa28c7e70e5afcd630",
+    "patched": "bc72bd5e079c1f2b926ffe74ccefe207676d2f5e90aadffa1bf2daeca15514c5",
+    "offset": 0x14194C,
+}
+
+
+def configure(root, action, spec):
+    library = Path(root) / "lib/backports/libSDL2-2.0.so.0"
+    backup = library.with_name(library.name + ".before-c5-filter")
+    content = library.read_bytes()
+    digest = hashlib.sha256(content).hexdigest()
+    if digest not in (spec["original"], spec["patched"]):
+        raise RuntimeError("Unrecognized SDL library version; leaving it untouched")
+    installed = digest == spec["patched"]
+    if action == "check":
+        return {"installed": installed, "sha256": digest}
+    if action == "restore":
+        if not installed:
+            return {"installed": False, "changed": False}
+        target = backup.read_bytes()
+        if hashlib.sha256(target).hexdigest() != spec["original"]:
+            raise RuntimeError("Invalid original SDL backup; leaving library untouched")
+    elif installed:
+        return {"installed": True, "changed": False}
+    else:
+        offset = spec["offset"]
+        if content[offset:offset + 4] != bytes.fromhex("99999999"):
+            raise RuntimeError("Expected SDL device exclusion not found")
+        target = content[:offset] + bytes.fromhex("98999899") + content[offset + 4:]
+        if hashlib.sha256(target).hexdigest() != spec["patched"]:
+            raise RuntimeError("Patched SDL checksum mismatch")
+        if backup.exists():
+            if hashlib.sha256(backup.read_bytes()).hexdigest() != spec["original"]:
+                raise RuntimeError("Existing SDL backup differs; leaving it untouched")
+        else:
+            backup.write_bytes(content)
+            backup.chmod(library.stat().st_mode & 0o777)
+    # Replace the inode atomically; never alter a library mapped by a live app.
+    pending = library.with_name(library.name + ".filter-new")
+    pending.write_bytes(target)
+    pending.chmod(library.stat().st_mode & 0o777)
+    pending.replace(library)
+    return {"installed": action != "restore", "changed": True}
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--device", default="tv")
+    actions = parser.add_mutually_exclusive_group()
+    actions.add_argument("--check", action="store_true")
+    actions.add_argument("--restore", action="store_true")
+    args = parser.parse_args()
+    action = "check" if args.check else "restore" if args.restore else "install"
+    source = "from pathlib import Path\nimport json, hashlib\n" + inspect.getsource(configure)
+    source += "\nr = configure(%r, %r, %r)\nprint(json.dumps(r))\n" % (APP, action, SPEC)
+    if args.check:
+        source += "raise SystemExit(0 if r['installed'] else 1)\n"
+    command = "python3 -c " + shlex.quote(source)
+    return subprocess.run(["ares-novacom", "--device", args.device, "--run", command]).returncode
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

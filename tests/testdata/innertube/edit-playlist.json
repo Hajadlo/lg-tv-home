@@ -1,0 +1,10 @@
+{
+ "status": "STATUS_SUCCEEDED",
+ "actions": [
+  {
+   "openPopupAction": {
+    "popupType": "TOAST"
+   }
+  }
+ ]
+}

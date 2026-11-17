@@ -147,6 +147,9 @@
       } else {
         note = 'not a YouTube video id; opened YouTube';
       }
+    } else if (app === 'twitch' && opts.channel) {
+      if (/^[A-Za-z0-9_]{1,25}$/.test(opts.channel)) params.channel = opts.channel;
+      else note = 'invalid Twitch channel; opened Twitch';
     } else if (app === 'jellyfin' && opts.jellyfinItemId) {
       // jellyfin-webos (1.2.x) ignores launch params: it always reopens its
       // saved server. Open Jellyfin and report that the deep link was skipped.
@@ -154,7 +157,7 @@
     }
     return launchId(id, params).then(function (r) {
       r.app = app;
-      r.deepLinked = app === 'moonlight' ? !!params.host_app_id : !!params.target;
+      r.deepLinked = app === 'moonlight' ? !!params.host_app_id : !!(params.target || params.channel);
       if (note) { r.note = note; }
       return r;
     });

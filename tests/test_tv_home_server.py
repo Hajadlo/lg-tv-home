@@ -34,6 +34,7 @@ import tvhome_server  # noqa: E402
 import innertube  # noqa: E402
 import weather  # noqa: E402
 import youtube  # noqa: E402
+import twitch  # noqa: E402
 import yt_cookies  # noqa: E402
 import yt_watched  # noqa: E402
 from refresher import Refresher  # noqa: E402
@@ -449,7 +450,7 @@ class HttpTest(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertEqual(headers["Access-Control-Allow-Origin"], "*")
         home = json.loads(body)
-        self.assertEqual(set(home), {"now", "features", "weather", "jellyfin", "pc", "system", "youtube", "steam"})
+        self.assertEqual(set(home), {"now", "features", "weather", "jellyfin", "pc", "system", "youtube", "twitch", "steam", "gameShortcuts"})
         self.assertIsNone(home["youtube"])
         self.assertIsNone(home["jellyfin"])
         self.assertEqual(home["weather"]["code"], "rain")
@@ -648,7 +649,7 @@ class YouTubeLiveTest(unittest.TestCase):
         for vid_, kind in (("l", "live"), ("u", "upcoming"), ("s", "stream"), ("v", "video")):
             info = youtube.parse_watch(page(f"x?v={vid_}", "GET", {}, None).body)
             self.assertEqual(info["kind"], kind)
-        self.assertEqual(youtube.parse_watch(b"<html>consent</html>"), {"category": None, "kind": None})
+        self.assertEqual(youtube.parse_watch(b"<html>consent</html>"), {"category": None, "kind": None, "length": None})
 
     def test_live_badged_streams_and_upcoming_left_out(self):
         a = [(vid(i), f"2026-10-{10 + i:02d}T10:00:00+00:00", False) for i in range(1, 6)]
@@ -1528,7 +1529,7 @@ class CookieYouTubeTest(unittest.TestCase):
         self.assertIsNone(cy.watch_state())
         self.assertEqual(cy.status_word, "unavailable")
         self.assertEqual(len(self.sent), 1)
-        self.assertIn("Open youtube.com once in the browser", self.sent[0])
+        self.assertIn("Open youtube.com once in the configured browser", self.sent[0])
         self.now[0] += 1800
         cy.watch_state()
         self.assertEqual(len(self.sent), 1)  # not repeated
@@ -1536,11 +1537,15 @@ class CookieYouTubeTest(unittest.TestCase):
         self.write_cookies(login_cookies())
         self.now[0] += 1800
         self.assertIsNotNone(cy.watch_state())
-        self.assertIsNone(json.loads((self.dir / "yt-watched.json").read_text())["notified"])  # re-armed
+        self.assertEqual(json.loads((self.dir / "yt-watched.json").read_text())["notified"], "nocookies")
+        self.now[0] += 24 * 3600
+        self.assertIsNotNone(cy.watch_state())
+        self.assertIsNone(json.loads((self.dir / "yt-watched.json").read_text())["notified"])
 
     def test_signed_out_and_wrong_channel(self):
         cy = self.make()
         cy.watch_state()
+        cy.store.resync = lambda: True
         self.web.signed_out = True
         self.now[0] += 1800
         self.assertIsNone(cy.watch_state())
@@ -1551,6 +1556,32 @@ class CookieYouTubeTest(unittest.TestCase):
         self.assertIsNone(cy.watch_state())
         self.assertIn("another channel", cy.last_error)
         self.assertEqual(len(self.sent), 1)
+
+    def test_rejected_cached_copy_is_retried_after_refresh(self):
+        cy = self.make()
+        cy.watch_state()
+        calls = []
+        original = self.web
+        def reject_once(url, method="GET", headers=None, data=None, timeout=15, follow=True):
+            if "/browse" in url and not calls:
+                calls.append("rejected")
+                raise innertube.SessionError("expired copy")
+            return original(url, method, headers, data, timeout, follow)
+        cy._fetch = reject_once
+        cy.store.resync = lambda: calls.append("refreshed") or True
+        self.now[0] += 1800
+        self.assertIsNotNone(cy.watch_state())
+        self.assertEqual(calls, ["rejected", "refreshed"])
+        self.assertEqual(self.sent, [])
+
+    def test_unavailable_browser_keeps_last_state_without_alert(self):
+        cy = self.make()
+        first = cy.watch_state()
+        self.web.signed_out = True
+        self.now[0] += 1800
+        self.assertIs(cy.watch_state(), first)
+        self.assertEqual(self.sent, [])
+        self.assertIn("not refreshed", cy.last_error)
 
     def test_no_such_channel(self):
         store = yt_cookies.CookieStore(self.dir / "yt-cookies.json", lambda: False)
@@ -1782,3 +1813,120 @@ class ContinueWatchingTest(unittest.TestCase):
         src.drop_music(vids)
         self.assertEqual(calls, [])  # cached
 
+
+
+class TwitchTest(unittest.TestCase):
+    NOW = 1_800_000_000
+    LIVE = {"currentUser": {"followedLiveUsers": {"edges": [
+        {"node": {"login": "gorgc", "displayName": "Gorgc", "profileImageURL": "https://cdn/gorgc.jpg",
+                  "stream": {"title": " Grand finals ", "viewersCount": 16013, "createdAt": "2026-11-01T13:03:29Z",
+                             "game": {"displayName": "Dota 2"}}}},
+        {"node": {"login": "gone", "displayName": "Gone", "stream": None}}]}}}
+    FOLLOWS = {"currentUser": {
+        "newest": {"edges": [
+            {"node": {"login": "gorgc", "displayName": "Gorgc", "lastBroadcast": {"startedAt": "2026-11-01T13:03:29Z"}}},
+            {"node": {"login": "tarpor", "displayName": "Tarpor", "profileImageURL": "https://cdn/t.jpg",
+                      "lastBroadcast": {"startedAt": "2026-10-30T10:00:00Z", "game": {"displayName": "Trackmania"}}}},
+            {"node": {"login": "never", "displayName": "Never", "lastBroadcast": {"startedAt": None}}}]},
+        "oldest": {"edges": [
+            {"node": {"login": "lirik", "displayName": "LIRIK", "lastBroadcast": {"startedAt": "2026-10-31T20:00:00Z"}}},
+            {"node": {"login": "tarpor", "displayName": "Tarpor", "lastBroadcast": {"startedAt": "2026-10-30T10:00:00Z"}}}]}}}
+
+    class Store:
+        def __init__(self, cookies, resync=False):
+            self._cookies, self._resync, self.resyncs = cookies, resync, 0
+
+        def sync_if_due(self):
+            return False
+
+        def resync(self):
+            self.resyncs += 1
+            return self._resync
+
+        def cookies(self):
+            return self._cookies
+
+        def status(self):
+            return {"login": bool(self._cookies)}
+
+    TOKEN = [{"host": ".twitch.tv", "name": "auth-token", "value": "tok"}]
+
+    def fetch(self, answers, seen):
+        def fetch(url, method, headers, body):
+            seen.append((url, method, headers, json.loads(body)))
+            status, data = answers.pop(0)
+            return net.Response(status, {}, json.dumps({"data": data}).encode())
+        return fetch
+
+    def test_live_and_recent_channels(self):
+        seen = []
+        src = twitch.TwitchSource(self.Store(self.TOKEN), self.fetch([(200, self.LIVE), (200, self.FOLLOWS)], seen),
+                                  clock=lambda: self.NOW)
+        block = src()
+        self.assertEqual(block["auth"], "ok")
+        self.assertEqual(block["live"], [{
+            "login": "gorgc", "name": "Gorgc", "title": "Grand finals", "game": "Dota 2", "viewers": 16013,
+            "started": "2026-11-01T13:03:29Z", "avatar": "https://cdn/gorgc.jpg",
+            "thumb": "https://static-cdn.jtvnw.net/previews-ttv/live_user_gorgc-640x360.jpg?t=6000000",
+            "backdrop": "https://static-cdn.jtvnw.net/previews-ttv/live_user_gorgc-1280x720.jpg?t=6000000"}])
+        # off air only, newest broadcast first, each channel once, never-live channels left out
+        self.assertEqual([(c["login"], c["game"]) for c in block["recent"]], [("lirik", None), ("tarpor", "Trackmania")])
+        for url, method, headers, body in seen:
+            self.assertEqual((url, method), (twitch.GQL_URL, "POST"))
+            self.assertEqual(headers["Authorization"], "OAuth tok")
+            self.assertEqual(headers["Client-Id"], twitch.WEB_CLIENT_ID)
+            self.assertTrue(body["operationName"])  # Twitch refuses follows to an unnamed query
+            self.assertNotIn("after", body["query"])  # a second page fails Twitch's integrity check
+
+    def test_no_login_cookie_is_missing(self):
+        block = twitch.TwitchSource(self.Store([]), self.fetch([], []))()
+        self.assertEqual((block["auth"], block["live"], block["recent"]), ("missing", [], []))
+
+    def test_rejected_token_resyncs_once_then_is_expired(self):
+        store = self.Store(self.TOKEN, resync=True)
+        block = twitch.TwitchSource(store, self.fetch([(401, None), (401, None)], []))()
+        self.assertEqual((block["auth"], store.resyncs), ("expired", 1))
+        store = self.Store(self.TOKEN, resync=False)
+        self.assertEqual(twitch.TwitchSource(store, self.fetch([(401, None)], []))()["auth"], "expired")
+
+    def test_other_failures_raise_so_the_last_block_stays(self):
+        def fetch(*a):
+            return net.Response(200, {}, json.dumps({"errors": [{"message": "service error"}]}).encode())
+        with self.assertRaises(OSError):
+            twitch.TwitchSource(self.Store(self.TOKEN), fetch)()
+
+    def test_cookie_store_keeps_only_twitch_cookies(self):
+        future = self.NOW + 86400
+        rows = [(".twitch.tv", "auth-token", "t", future, ""), (".twitch.tv", "login", "example", future, ""),
+                (".youtube.com", "LOGIN_INFO", "y", future, "")]
+        out = yt_cookies.extract(cookie_tar(rows), now=self.NOW, hosts=yt_cookies.TWITCH_HOSTS)
+        self.assertEqual(sorted(c["name"] for c in out), ["auth-token", "login"])
+        self.assertTrue(yt_cookies.has_twitch_login(out))
+        self.assertFalse(yt_cookies.has_twitch_login([c for c in out if c["name"] != "auth-token"]))
+        self.assertEqual(twitch.token(out), "t")
+
+
+
+def test_optional_twitch_configuration_and_cached_home(tmp_path):
+    import tvconfig
+    cfg = tvconfig.from_dict({"twitch": {"browser_profile": "/browser"}})
+    assert tvconfig.features(cfg)["twitch"]
+    assert not tvconfig.features(tvconfig.from_dict({}))["twitch"]
+    source = twitch.TwitchSource(TwitchTest.Store([]), TwitchTest().fetch([], []))
+    app = tvhome_server.App(tmp_path, lambda: None, lambda: None, FakeDesktop().pc(),
+                            images.ImageCache(tmp_path / "img", None), hdd=lambda: {},
+                            features={"jellyfin": False, "youtube": False, "steam": False,
+                                      "weather": False, "twitch": True}, twitch_source=source)
+    app.twitch.refresh_now()
+    assert app.home()["twitch"]["auth"] == "missing"
+    assert app.health()["twitch"]["cookies"]["login"] is False
+
+
+def test_steam_library_includes_installed_unplayed(tmp_path):
+    names = steam.StoreNames(tmp_path / "names.json")
+    source = steam.SteamSource(lambda: True, tmp_path / "steam.json", names,
+                               read=lambda: ({}, [manifest(999123, "Example game", 0)]))
+    result = source()
+    assert result["recent"] == []
+    assert result["library"][0]["name"] == "Example game"
+    assert result["library"][0]["lastPlayed"] is None

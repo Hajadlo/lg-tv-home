@@ -13,6 +13,10 @@ Setup steps are in `../SETUP.md`; this file explains how it works.
 | `ssap_pair.py` | One-time SSAP pairing (accept the prompt on the TV) |
 | `close-app` | Closes an app over ares (Moonlight before a stream) |
 | `devmode-renew` | Renews the Dev Mode session (daily timer) |
+| `tvctl` | Send remote keys, take screenshots, launch apps and inspect the foreground app |
+| `twitch-adfree-patch`, `twitch-tvhome.js` | Version-guarded Twitch AdFree 1.6.6 channel launch, chat and quality fix |
+| `moonlight-controller-filter` | Version-guarded C5 remote exclusion for Moonlight 1.6.36 |
+| `youtube-recovery-install`, `youtube-startup-recovery.js` | Version-guarded YouTube AdFree 0.5.3 startup recovery |
 
 ## How the app works
 
@@ -113,10 +117,11 @@ YouTube AdFree 0.5.3 can occasionally open its home screen on a cold start
 instead of the requested video. `youtube-startup-recovery.js` is a recovery
 script for that specific version: after five seconds it checks the preloaded
 launch target and redirects only if the requested video is missing. The
-script has a loop guard. It must be prepended to YouTube AdFree's own
-`webOSUserScripts/userScript.js` in a repackaged installation; it is not
-installed by TV Home's installer. Back up the original app and settings first,
-verify the app version, and reinstall the patched package using the webOS SDK.
+script has a loop guard. It is not installed by TV Home's installer. Back up
+YouTube AdFree 0.5.3 into a tar archive containing its app directory, then run
+`tv/youtube-recovery-install --device <ares-device> --backup <archive>`.
+The installer verifies the app files and backup against known hashes before
+repackaging and installing it. Keep the backup to restore the original.
 Reinstalling or updating YouTube AdFree removes the patch. This workaround was
 verified on one TV but the race is intermittent.
 
@@ -125,3 +130,23 @@ configured section), and returns there on relaunch. The watcher retries a
 lost connection every second in the supplied systemd unit. After updating an
 existing installation, reinstall its generated unit and run systemd's
 `daemon-reload` and restart the watcher.
+
+## Twitch and game shortcuts
+
+Set `[twitch] browser_profile` and optionally `ssh_host` to the Firefox-family
+profile signed in to Twitch. The server copies only `.twitch.tv` cookies into
+a separate mode-600 store. Install Twitch AdFree and run
+`tv/twitch-adfree-patch --device <ares-device>` for the supported 1.6.6
+version; `--check` and `--restore` are available. The checksum-guarded patch
+opens selected channels and controls chat and quality. Reapply it after a
+reinstall; other versions are refused.
+
+Add `[[steam.shortcuts]]` entries to configure Sunshine app IDs and optional
+art URLs. The Games section also lists installed Steam games, including games
+not yet played. A Steam game tile opens Big Picture; a configured Sunshine
+shortcut launches its selected app. IDs and art are supplied by the user.
+
+For the C5 remote appearing as a Moonlight controller,
+`tv/moonlight-controller-filter --device <ares-device>` patches only the
+known Moonlight 1.6.36 SDL build; `--check` and `--restore` are available.
+Other builds are rejected.

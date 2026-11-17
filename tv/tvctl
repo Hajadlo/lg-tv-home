@@ -1,0 +1,226 @@
+#!/usr/bin/env -S uv run --quiet --script
+# /// script
+# requires-python = ">=3.11"
+# dependencies = ["aiowebostv"]
+# ///
+"""Drive the LG TV over SSAP: remote keys, screenshots, app launches, raw calls.
+
+  tvctl [--host HOST] STEP [STEP ...]
+
+Steps run in order over one connection:
+  key NAME          press a remote button (HOME, BACK, ENTER, UP, GREEN, ...)
+  shot OUT          save a screenshot of the screen to OUT (JPEG)
+  launch ID [JSON]  launch app ID; the JSON object becomes its launch params
+  ssap URI [JSON]   raw SSAP request with an optional JSON payload. Write the URI
+                    without "ssap://" (aiowebostv adds it; a given prefix is dropped)
+  wait MS           sleep MS milliseconds
+  fg                print the foreground app id
+  eval APP JS       evaluate a JS expression in web app APP (ares-inspect on configured ares device,
+                    then CDP Runtime.evaluate); prints its value. Read-only use only:
+                    it runs in the user's app
+
+Example: tvctl key GREEN wait 500 shot /tmp/panel.jpg key GREEN
+
+Prints one JSON line per step. Uses the pairing key ~/.config/tv-home/ssap-client-key
+(ssap_pair.py). Exit 2 on bad arguments, 1 when the TV is unreachable or a step
+fails; the steps after a failed one don't run.
+"""
+from __future__ import annotations
+
+import argparse
+import asyncio
+import json
+import re
+import ssl
+import sys
+import urllib.request
+from pathlib import Path
+
+HOST = ""
+KEY_FILE = Path.home() / ".config/tv-home/ssap-client-key"
+ARITY = {"key": 1, "shot": 1, "launch": 1, "ssap": 1, "wait": 1, "fg": 0, "eval": 2}
+DEVICE = "tv"
+INSPECT_TIMEOUT = 30
+
+
+class UsageError(Exception):
+    pass
+
+
+def parse_steps(tokens: list[str]) -> list[tuple]:
+    """Tokens to (verb, arg[, payload]) steps. launch and ssap take an optional JSON object."""
+    steps, i = [], 0
+    while i < len(tokens):
+        verb = tokens[i]
+        if verb not in ARITY:
+            raise UsageError(f"unknown step {verb!r} (key, shot, launch, ssap, wait, fg, eval)")
+        if verb == "fg":
+            steps.append(("fg",))
+            i += 1
+            continue
+        if i + ARITY[verb] >= len(tokens):
+            raise UsageError(f"{verb} needs {'an app id and a JS expression' if verb == 'eval' else 'an argument'}")
+        if verb == "eval":
+            steps.append(("eval", tokens[i + 1], tokens[i + 2]))
+            i += 3
+            continue
+        arg, i = tokens[i + 1], i + 2
+        if verb == "key":
+            steps.append(("key", arg.upper()))
+        elif verb == "shot":
+            steps.append(("shot", arg))
+        elif verb == "wait":
+            if not arg.isdigit():
+                raise UsageError(f"wait takes milliseconds, got {arg!r}")
+            steps.append(("wait", int(arg)))
+        else:
+            payload = None
+            if i < len(tokens) and tokens[i].lstrip().startswith("{"):
+                try:
+                    payload = json.loads(tokens[i])
+                except json.JSONDecodeError as exc:
+                    raise UsageError(f"{verb} {arg}: bad JSON: {exc}") from None
+                if not isinstance(payload, dict):
+                    raise UsageError(f"{verb} {arg}: JSON must be an object")
+                i += 1
+            if verb == "ssap":
+                arg = arg.removeprefix("ssap://")
+            steps.append((verb, arg, payload))
+    if not steps:
+        raise UsageError("no steps given")
+    return steps
+
+
+def fetch(url: str) -> bytes:
+    """The TV serves screenshots over HTTPS with a self-signed certificate."""
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+    with urllib.request.urlopen(url, timeout=15, context=ctx) as resp:
+        return resp.read()
+
+
+def inspector_port(line: str) -> int | None:
+    """ares-inspect prints the local proxy it serves the app's DevTools on, e.g.
+    'Application Debugging - http://localhost:34003'."""
+    match = re.search(r"https?://(?:localhost|127\.0\.0\.1):(\d+)", line)
+    return int(match.group(1)) if match else None
+
+
+async def cdp_evaluate(port: int, expression: str):
+    """Runtime.evaluate in the first page target behind the ares-inspect proxy; the value or the exception."""
+    import aiohttp
+
+    async with aiohttp.ClientSession() as session:
+        async with session.get(f"http://localhost:{port}/json") as resp:
+            targets = json.loads(await resp.text())
+        ws_url = next((t["webSocketDebuggerUrl"] for t in targets if "webSocketDebuggerUrl" in t), None)
+        if not ws_url:
+            raise RuntimeError(f"no debuggable page behind port {port} (is the app running?)")
+        async with session.ws_connect(ws_url, max_msg_size=0) as ws:
+            await ws.send_json({"id": 1, "method": "Runtime.evaluate",
+                                "params": {"expression": expression, "returnByValue": True}})
+            async for msg in ws:
+                data = json.loads(msg.data)
+                if data.get("id") == 1:
+                    result = data.get("result") or {}
+                    if "exceptionDetails" in result:
+                        raise RuntimeError(f"JS exception: {result['exceptionDetails'].get('text')} "
+                                           f"{result.get('result', {}).get('description', '')}".strip())
+                    return result.get("result", {}).get("value")
+    raise RuntimeError("the inspector closed before answering")
+
+
+async def inspect_eval(app: str, expression: str, device: str = DEVICE):
+    """Start ares-inspect for app, evaluate the expression over CDP, stop the inspector."""
+    proc = await asyncio.create_subprocess_exec("ares-inspect", "--device", device, "--app", app,
+                                                stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT)
+    try:
+        port, seen = None, []
+        async with asyncio.timeout(INSPECT_TIMEOUT):
+            while port is None:
+                line = (await proc.stdout.readline()).decode(errors="replace")
+                if not line:
+                    raise RuntimeError("ares-inspect ended: " + " ".join(seen)[-300:])
+                seen.append(line.strip())
+                port = inspector_port(line)
+        return await cdp_evaluate(port, expression)
+    finally:
+        if proc.returncode is None:
+            proc.terminate()
+            await proc.wait()
+
+
+async def run_steps(client, steps, fetch=fetch, sleep=asyncio.sleep, out=print, inspect=inspect_eval) -> None:
+    for step in steps:
+        verb = step[0]
+        if verb == "key":
+            await client.button(step[1])
+            out(json.dumps({"key": step[1]}))
+        elif verb == "wait":
+            await sleep(step[1] / 1000)
+            out(json.dumps({"wait_ms": step[1]}))
+        elif verb == "shot":
+            reply = await client.request("tv/executeOneShot", {})
+            data = await asyncio.to_thread(fetch, reply["imageUri"])
+            Path(step[1]).write_bytes(data)
+            out(json.dumps({"shot": step[1], "bytes": len(data)}))
+        elif verb == "launch":
+            body = {"id": step[1]}
+            if step[2] is not None:
+                body["params"] = step[2]
+            out(json.dumps({"launch": step[1], "reply": await client.request("system.launcher/launch", body)}))
+        elif verb == "ssap":
+            out(json.dumps({"ssap": step[1], "reply": await client.request(step[1], step[2])}))
+        elif verb == "fg":
+            reply = await client.request("com.webos.applicationManager/getForegroundAppInfo", None)
+            out(json.dumps({"fg": (reply or {}).get("appId")}))
+        elif verb == "eval":
+            out(json.dumps({"eval": step[1], "value": await inspect(step[1], step[2])}, ensure_ascii=False))
+
+
+async def main_async(host: str, steps, device: str = DEVICE) -> int:
+    from aiowebostv import WebOsClient
+
+    client = WebOsClient(host, client_key=KEY_FILE.read_text().strip())
+    try:
+        await asyncio.wait_for(client.connect(), timeout=15)
+        await run_steps(client, steps, inspect=lambda app, expression: inspect_eval(app, expression, device))
+    except Exception as exc:  # TV off, call refused, fetch failed
+        print(f"tvctl: {type(exc).__name__}: {exc}", file=sys.stderr)
+        return 1
+    finally:
+        try:
+            await client.disconnect()
+        except Exception:
+            pass
+    return 0
+
+
+def main(argv=None) -> int:
+    p = argparse.ArgumentParser(description=__doc__.splitlines()[0], usage="tvctl [--host HOST] STEP [STEP ...]",
+                                epilog="\n".join(__doc__.splitlines()[3:]),
+                                formatter_class=argparse.RawDescriptionHelpFormatter)
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "server"))
+    import tvconfig
+    cfg = tvconfig.load()
+    p.add_argument("--host", default=cfg["tv"]["ip"])
+    p.add_argument("--device", default=cfg["tv"]["ares_device"])
+    p.add_argument("steps", nargs=argparse.REMAINDER)
+    args = p.parse_args(argv)
+    try:
+        steps = parse_steps(args.steps)
+    except UsageError as exc:
+        print(f"tvctl: {exc}", file=sys.stderr)
+        return 2
+    if not args.host:
+        print("tvctl: set [tv] ip in config.toml or pass --host", file=sys.stderr)
+        return 1
+    if not KEY_FILE.exists():
+        print(f"tvctl: no pairing key at {KEY_FILE}; pair once with ssap_pair.py", file=sys.stderr)
+        return 1
+    return asyncio.run(main_async(args.host, steps, args.device))
+
+
+if __name__ == "__main__":
+    sys.exit(main())

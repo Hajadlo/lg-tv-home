@@ -238,7 +238,16 @@ Check (after `systemctl --user restart tv-home`, give it a minute):
 person turns on "Bypass initial account selection on startup" in YouTube
 AdFree (green button) so a video starts in one press.
 
-### Steam via Moonlight/Sunshine
+### Twitch
+
+Install Twitch AdFree on the TV. Set `[twitch] browser_profile` to a
+Firefox-family profile signed in to Twitch and, if it is on another machine,
+set `ssh_host`. Restart `tv-home` and reinstall the TV app to include the
+configured Twitch app ID in its bridge. Twitch AdFree 1.6.6 needs the
+version-guarded channel launch patch described in [tv/README.md](tv/README.md).
+The tab is optional and is not available in the TV-only edition.
+
+### Games via Moonlight/Sunshine
 
 Needs Sunshine on the gaming PC, Moonlight TV paired with it, and
 Wake-on-LAN enabled in the PC's BIOS/OS. Fill `[steam]`:
@@ -255,7 +264,9 @@ Wake-on-LAN enabled in the PC's BIOS/OS. Fill `[steam]`:
   TV with the person.
 - Optional `ssh_host` (key login to the PC) for the Sunshine restart
   (`sunshine_unit`, the systemd user unit running Sunshine) and the recently
-  played list (`steam_root`, `steam_user_id`).
+  installed and recently played lists (`steam_root`, `steam_user_id`).
+- Optional `[[steam.shortcuts]]` entries specify a name, Sunshine `app_id`,
+  and optional artwork URL for direct game launches.
 
 After changing `[steam]`, run `tv/install` again (the Moonlight values are
 baked into the app) and restart `tv-home`. Check: `curl -s

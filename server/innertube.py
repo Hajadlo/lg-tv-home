@@ -4,7 +4,8 @@ Authorization follows yt-dlp (extractor/youtube/_base.py, 2026-07): for each of
 SAPISID (falling back to __Secure-3PAPISID), __Secure-1PAPISID and
 __Secure-3PAPISID one `<SCHEME> <ts>_<sha1("[<user session id> ]<ts> <sid> <origin>")>[_u]`,
 space-joined. Only `browse` and `account/accounts_list` are called here:
-nothing that plays, records watch time or writes history.
+nothing that plays, records watch time or writes history. The yt-playlist CLI
+also sends `browse/edit_playlist` through `Client.call`, when asked to.
 """
 
 from __future__ import annotations

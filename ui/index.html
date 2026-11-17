@@ -24,6 +24,7 @@
   <div id="backdrop" aria-hidden="true">
     <img class="bd" data-room="jellyfin" alt="">
     <img class="bd" data-room="youtube" alt="">
+    <img class="bd" data-room="twitch" alt="">
     <img class="bd" data-room="pc" alt="">
     <img class="bd bd-idle" id="bd-a" alt="">
     <img class="bd bd-idle" id="bd-b" alt="">
@@ -32,6 +33,7 @@
   <div id="wash" aria-hidden="true">
     <div class="wash" data-room="jellyfin"></div>
     <div class="wash" data-room="youtube"></div>
+    <div class="wash" data-room="twitch"></div>
     <div class="wash" data-room="pc"></div>
   </div>
 
@@ -48,8 +50,9 @@
           <span class="door-word">YouTube</span>
           <span class="door-note" id="yt-note"></span>
         </button>
+        <button class="door" data-item data-app="twitch"><span class="door-word">Twitch</span><span class="door-note" id="tw-note"></span></button>
         <button class="door" id="door-pc" data-item data-app="pc">
-          <span class="door-word">Steam<span class="door-bar"><i></i></span></span>
+          <span class="door-word">Games<span class="door-bar"><i></i></span></span>
           <span class="door-note" id="pc-note"></span>
         </button>
         <span id="doorline" aria-hidden="true"></span>
@@ -65,6 +68,7 @@
         <section class="hero" data-section="hero"></section>
         <div class="rows"></div>
       </div>
+      <div class="stage" data-room="twitch"><section class="hero" data-section="hero"></section><div class="rows"></div></div>
       <div class="stage" data-room="pc">
         <section class="hero" data-section="hero"></section>
         <div class="rows"></div>
